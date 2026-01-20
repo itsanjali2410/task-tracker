@@ -171,8 +171,8 @@ const TaskDetail = () => {
 
   if (loading) {
     return (
-      <div className=\"flex items-center justify-center h-full\">
-        <div className=\"animate-spin rounded-full h-12 w-12 border-b-2 border-primary\"></div>
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -182,28 +182,28 @@ const TaskDetail = () => {
   const canUpdateStatus = user?.role === 'team_member' && task.assigned_to === user.id;
 
   return (
-    <div className=\"space-y-6\" data-testid=\"task-detail\">
+    <div className="space-y-6" data-testid="task-detail">
       {/* Header */}
-      <div className=\"flex items-center gap-4\">
+      <div className="flex items-center gap-4">
         <button
           onClick={() => navigate(-1)}
-          className=\"p-2 hover:bg-slate-100 rounded-md transition-colors\"
-          data-testid=\"back-btn\"
+          className="p-2 hover:bg-slate-100 rounded-md transition-colors"
+          data-testid="back-btn"
         >
-          <ArrowLeft size={20} className=\"text-text-primary\" />
+          <ArrowLeft size={20} className="text-text-primary" />
         </button>
-        <h2 className=\"text-3xl font-heading font-bold text-text-primary\">Task Details</h2>
+        <h2 className="text-3xl font-heading font-bold text-text-primary">Task Details</h2>
       </div>
 
-      <div className=\"grid grid-cols-1 lg:grid-cols-3 gap-6\">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Task Details */}
-        <div className=\"lg:col-span-2 space-y-6\">
+        <div className="lg:col-span-2 space-y-6">
           {/* Main Info Card */}
-          <div className=\"bg-white border border-slate-200 rounded-lg shadow-sm p-6\">
-            <div className=\"flex items-start justify-between mb-4\">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className=\"text-2xl font-heading font-semibold text-text-primary mb-2\">{task.title}</h3>
-                <div className=\"flex items-center gap-3\">
+                <h3 className="text-2xl font-heading font-semibold text-text-primary mb-2">{task.title}</h3>
+                <div className="flex items-center gap-3">
                   <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${getPriorityBadge(task.priority)}`}>
                     {task.priority} priority
                   </span>
@@ -214,49 +214,49 @@ const TaskDetail = () => {
               </div>
             </div>
 
-            <div className=\"space-y-4\">
+            <div className="space-y-4">
               <div>
-                <label className=\"block text-sm font-medium text-text-secondary mb-1\">Description</label>
-                <p className=\"text-text-primary\">{task.description}</p>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Description</label>
+                <p className="text-text-primary">{task.description}</p>
               </div>
 
-              <div className=\"grid grid-cols-2 gap-4\">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className=\"block text-sm font-medium text-text-secondary mb-1\">Assigned To</label>
-                  <div className=\"flex items-center gap-2\">
-                    <User size={16} className=\"text-text-secondary\" />
-                    <span className=\"text-text-primary\">{task.assigned_to_name}</span>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Assigned To</label>
+                  <div className="flex items-center gap-2">
+                    <User size={16} className="text-text-secondary" />
+                    <span className="text-text-primary">{task.assigned_to_name}</span>
                   </div>
                 </div>
                 <div>
-                  <label className=\"block text-sm font-medium text-text-secondary mb-1\">Created By</label>
-                  <div className=\"flex items-center gap-2\">
-                    <User size={16} className=\"text-text-secondary\" />
-                    <span className=\"text-text-primary\">{task.created_by_name}</span>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Created By</label>
+                  <div className="flex items-center gap-2">
+                    <User size={16} className="text-text-secondary" />
+                    <span className="text-text-primary">{task.created_by_name}</span>
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className=\"block text-sm font-medium text-text-secondary mb-1\">Due Date</label>
-                <div className=\"flex items-center gap-2\">
-                  <Calendar size={16} className=\"text-text-secondary\" />
-                  <span className=\"text-text-primary\">{new Date(task.due_date).toLocaleDateString()}</span>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Due Date</label>
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} className="text-text-secondary" />
+                  <span className="text-text-primary">{new Date(task.due_date).toLocaleDateString()}</span>
                 </div>
               </div>
 
               {canUpdateStatus && (
                 <div>
-                  <label className=\"block text-sm font-medium text-text-secondary mb-2\">Update Status</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Update Status</label>
                   <select
                     value={task.status}
                     onChange={(e) => handleStatusChange(e.target.value)}
-                    className=\"w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary\"
-                    data-testid=\"status-select\"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="status-select"
                   >
-                    <option value=\"todo\">To Do</option>
-                    <option value=\"in_progress\">In Progress</option>
-                    <option value=\"completed\">Completed</option>
+                    <option value="todo">To Do</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
                   </select>
                 </div>
               )}
@@ -264,9 +264,9 @@ const TaskDetail = () => {
           </div>
 
           {/* Tabs for Comments and Attachments */}
-          <div className=\"bg-white border border-slate-200 rounded-lg shadow-sm\">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm">
             {/* Tab Headers */}
-            <div className=\"flex border-b border-slate-200\">
+            <div className="flex border-b border-slate-200">
               <button
                 onClick={() => setActiveTab('comments')}
                 className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
@@ -274,7 +274,7 @@ const TaskDetail = () => {
                     ? 'text-primary border-b-2 border-primary'
                     : 'text-text-secondary hover:text-text-primary'
                 }`}
-                data-testid=\"comments-tab\"
+                data-testid="comments-tab"
               >
                 <MessageSquare size={20} />
                 Comments ({comments.length})
@@ -286,7 +286,7 @@ const TaskDetail = () => {
                     ? 'text-primary border-b-2 border-primary'
                     : 'text-text-secondary hover:text-text-primary'
                 }`}
-                data-testid=\"attachments-tab\"
+                data-testid="attachments-tab"
               >
                 <Paperclip size={20} />
                 Attachments ({attachments.length})
@@ -294,26 +294,26 @@ const TaskDetail = () => {
             </div>
 
             {/* Tab Content */}
-            <div className=\"p-6\">
+            <div className="p-6">
               {activeTab === 'comments' ? (
                 <>
                   {/* Comment Form */}
-                  <form onSubmit={handleAddComment} className=\"mb-6\">
-                    <div className=\"flex gap-3\">
+                  <form onSubmit={handleAddComment} className="mb-6">
+                    <div className="flex gap-3">
                       <input
-                        type=\"text\"
+                        type="text"
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
-                        placeholder=\"Add a comment...\"
-                        className=\"flex-1 px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary\"
+                        placeholder="Add a comment..."
+                        className="flex-1 px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         disabled={submittingComment}
-                        data-testid=\"comment-input\"
+                        data-testid="comment-input"
                       />
                       <button
-                        type=\"submit\"
+                        type="submit"
                         disabled={submittingComment || !newComment.trim()}
-                        className=\"px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-md font-medium flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed\"
-                        data-testid=\"submit-comment-btn\"
+                        className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-md font-medium flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        data-testid="submit-comment-btn"
                       >
                         <Send size={16} />
                         Post
@@ -322,23 +322,23 @@ const TaskDetail = () => {
                   </form>
 
                   {/* Comments List */}
-                  <div className=\"space-y-4\">
+                  <div className="space-y-4">
                     {comments.length === 0 ? (
-                      <p className=\"text-center text-text-secondary py-8\">No comments yet. Be the first to comment!</p>
+                      <p className="text-center text-text-secondary py-8">No comments yet. Be the first to comment!</p>
                     ) : (
                       comments.map((comment) => (
                         <div
                           key={comment.id}
-                          className=\"border-l-2 border-primary pl-4 py-2\"
+                          className="border-l-2 border-primary pl-4 py-2"
                           data-testid={`comment-${comment.id}`}
                         >
-                          <div className=\"flex items-center gap-2 mb-1\">
-                            <span className=\"font-medium text-text-primary\">{comment.user_name}</span>
-                            <span className=\"text-xs text-text-secondary\">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-text-primary">{comment.user_name}</span>
+                            <span className="text-xs text-text-secondary">
                               {new Date(comment.created_at).toLocaleString()}
                             </span>
                           </div>
-                          <p className=\"text-text-primary\">{comment.content}</p>
+                          <p className="text-text-primary">{comment.content}</p>
                         </div>
                       ))
                     )}
@@ -347,44 +347,44 @@ const TaskDetail = () => {
               ) : (
                 <>
                   {/* File Upload */}
-                  <div className=\"mb-6\">
+                  <div className="mb-6">
                     <label
-                      htmlFor=\"file-upload\"
-                      className=\"flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-md font-medium cursor-pointer transition-all active:scale-95\"
+                      htmlFor="file-upload"
+                      className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-md font-medium cursor-pointer transition-all active:scale-95"
                     >
                       <Upload size={20} />
                       {uploadingFile ? 'Uploading...' : 'Upload File'}
                     </label>
                     <input
-                      id=\"file-upload\"
-                      type=\"file\"
+                      id="file-upload"
+                      type="file"
                       onChange={handleFileUpload}
                       disabled={uploadingFile}
-                      className=\"hidden\"
-                      accept=\".pdf,.jpg,.jpeg,.png,.doc,.docx\"
-                      data-testid=\"file-upload-input\"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      data-testid="file-upload-input"
                     />
-                    <p className=\"text-xs text-text-secondary mt-2\">
+                    <p className="text-xs text-text-secondary mt-2">
                       Allowed: PDF, JPG, PNG, DOC, DOCX (Max 10MB)
                     </p>
                   </div>
 
                   {/* Attachments List */}
-                  <div className=\"space-y-3\">
+                  <div className="space-y-3">
                     {attachments.length === 0 ? (
-                      <p className=\"text-center text-text-secondary py-8\">No attachments yet</p>
+                      <p className="text-center text-text-secondary py-8">No attachments yet</p>
                     ) : (
                       attachments.map((attachment) => (
                         <div
                           key={attachment.id}
-                          className=\"flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-primary/30 transition-colors\"
+                          className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-primary/30 transition-colors"
                           data-testid={`attachment-${attachment.id}`}
                         >
-                          <div className=\"flex items-center gap-3 flex-1\">
-                            <Paperclip size={20} className=\"text-text-secondary\" />
-                            <div className=\"flex-1 min-w-0\">
-                              <p className=\"font-medium text-text-primary truncate\">{attachment.file_name}</p>
-                              <div className=\"flex items-center gap-3 text-xs text-text-secondary\">
+                          <div className="flex items-center gap-3 flex-1">
+                            <Paperclip size={20} className="text-text-secondary" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-text-primary truncate">{attachment.file_name}</p>
+                              <div className="flex items-center gap-3 text-xs text-text-secondary">
                                 <span>{formatFileSize(attachment.file_size)}</span>
                                 <span>•</span>
                                 <span>{attachment.uploaded_by_name}</span>
@@ -393,23 +393,23 @@ const TaskDetail = () => {
                               </div>
                             </div>
                           </div>
-                          <div className=\"flex items-center gap-2\">
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleDownloadFile(attachment.id, attachment.file_name)}
-                              className=\"p-2 hover:bg-slate-100 rounded-md transition-colors\"
+                              className="p-2 hover:bg-slate-100 rounded-md transition-colors"
                               data-testid={`download-btn-${attachment.id}`}
-                              title=\"Download\"
+                              title="Download"
                             >
-                              <Download size={18} className=\"text-primary\" />
+                              <Download size={18} className="text-primary" />
                             </button>
                             {(user?.id === attachment.uploaded_by || user?.role === 'admin') && (
                               <button
                                 onClick={() => handleDeleteAttachment(attachment.id)}
-                                className=\"p-2 hover:bg-red-50 rounded-md transition-colors\"
+                                className="p-2 hover:bg-red-50 rounded-md transition-colors"
                                 data-testid={`delete-btn-${attachment.id}`}
-                                title=\"Delete\"
+                                title="Delete"
                               >
-                                <Trash2 size={18} className=\"text-red-600\" />
+                                <Trash2 size={18} className="text-red-600" />
                               </button>
                             )}
                           </div>
@@ -424,21 +424,21 @@ const TaskDetail = () => {
         </div>
 
         {/* Sidebar Info */}
-        <div className=\"space-y-4\">
-          <div className=\"bg-white border border-slate-200 rounded-lg shadow-sm p-4\">
-            <h5 className=\"font-heading font-semibold text-text-primary mb-3\">Task Information</h5>
-            <div className=\"space-y-3 text-sm\">
+        <div className="space-y-4">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4">
+            <h5 className="font-heading font-semibold text-text-primary mb-3">Task Information</h5>
+            <div className="space-y-3 text-sm">
               <div>
-                <span className=\"text-text-secondary\">Created:</span>
-                <p className=\"text-text-primary font-medium\">{new Date(task.created_at).toLocaleString()}</p>
+                <span className="text-text-secondary">Created:</span>
+                <p className="text-text-primary font-medium">{new Date(task.created_at).toLocaleString()}</p>
               </div>
               <div>
-                <span className=\"text-text-secondary\">Last Updated:</span>
-                <p className=\"text-text-primary font-medium\">{new Date(task.updated_at).toLocaleString()}</p>
+                <span className="text-text-secondary">Last Updated:</span>
+                <p className="text-text-primary font-medium">{new Date(task.updated_at).toLocaleString()}</p>
               </div>
               <div>
-                <span className=\"text-text-secondary\">Task ID:</span>
-                <p className=\"text-text-primary font-mono text-xs\">{task.id}</p>
+                <span className="text-text-secondary">Task ID:</span>
+                <p className="text-text-primary font-mono text-xs">{task.id}</p>
               </div>
             </div>
           </div>
