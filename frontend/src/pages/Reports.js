@@ -56,15 +56,15 @@ const Reports = () => {
       </div>
 
       {/* Overview Stats */}
-      <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6\">
-        <div className=\"bg-white border border-slate-200 rounded-lg shadow-sm p-6\" data-testid=\"stat-total-users\">
-          <div className=\"flex items-center justify-between mb-4\">
-            <div className=\"bg-blue-500 w-12 h-12 rounded-lg flex items-center justify-center\">
-              <Users className=\"text-white\" size={24} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6" data-testid="stat-total-users">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-blue-500 w-12 h-12 rounded-lg flex items-center justify-center">
+              <Users className="text-white" size={24} />
             </div>
           </div>
-          <p className=\"text-3xl font-heading font-bold text-text-primary mb-1\">{teamOverview.total_users}</p>
-          <p className=\"text-sm text-text-secondary\">Team Members</p>
+          <p className="text-3xl font-heading font-bold text-text-primary mb-1">{teamOverview.total_users}</p>
+          <p className="text-sm text-text-secondary">Team Members</p>
         </div>
 
         <div className=\"bg-white border border-slate-200 rounded-lg shadow-sm p-6\" data-testid=\"stat-total-tasks\">
