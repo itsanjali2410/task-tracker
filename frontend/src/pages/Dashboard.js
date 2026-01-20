@@ -103,6 +103,52 @@ const Dashboard = () => {
         ))}
       </div>
 
+      {/* Productivity Score (if available) */}
+      {productivity && (
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <TrendingUp size={24} className="text-primary" />
+            <h3 className="text-xl font-heading font-semibold text-text-primary">Your Productivity Score</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-5xl font-heading font-bold text-primary mb-2">
+                {productivity.productivity_score}
+              </div>
+              <p className="text-sm text-text-secondary">Overall Score</p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-text-secondary">Completion Rate</p>
+                <p className="text-lg font-semibold text-text-primary">
+                  {productivity.tasks_completed} / {productivity.total_tasks_assigned}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-text-secondary">On-Time Completion</p>
+                <p className="text-lg font-semibold text-green-600">
+                  {productivity.tasks_completed_on_time}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-text-secondary">Overdue Tasks</p>
+                <p className="text-lg font-semibold text-red-600">
+                  {productivity.overdue_tasks}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-text-secondary">Avg Completion Time</p>
+                <p className="text-lg font-semibold text-text-primary">
+                  {productivity.average_completion_time_hours}h
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Recent Tasks */}
       <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6">
         <h3 className="text-xl font-heading font-semibold text-text-primary mb-4">Recent Tasks</h3>
