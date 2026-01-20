@@ -8,6 +8,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const TaskList = () => {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
