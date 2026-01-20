@@ -471,6 +471,8 @@ def main():
         ("User Management Unauthorized", tester.test_user_management_unauthorized),
         ("Task Management", tester.test_task_management),
         ("Task Status Update", tester.test_task_status_update),
+        ("Comments API", tester.test_comments_api),
+        ("Comments Authorization", tester.test_comments_authorization),
         ("Stats Endpoint", tester.test_stats_endpoint),
         ("Role-based Access", tester.test_role_based_access),
     ]
