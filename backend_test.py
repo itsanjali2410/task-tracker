@@ -2,6 +2,8 @@ import requests
 import sys
 from datetime import datetime, timedelta
 import json
+import os
+import tempfile
 
 class TripStarsAPITester:
     def __init__(self, base_url="https://tripstars-tracker.preview.emergentagent.com"):
