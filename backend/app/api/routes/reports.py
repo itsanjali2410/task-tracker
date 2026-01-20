@@ -93,6 +93,8 @@ async def get_user_productivity(
                 # Parse due_date
                 try:
                     due_date = datetime.fromisoformat(task["due_date"])
+                    if due_date.tzinfo is None:
+                        due_date = due_date.replace(tzinfo=timezone.utc)
                 except:
                     # If due_date is just a date string, convert to datetime
                     due_date = datetime.strptime(task["due_date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
