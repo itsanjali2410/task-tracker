@@ -42,6 +42,17 @@ TripStars is a comprehensive task management system designed specifically for tr
 - ✅ Comment timestamps
 - ✅ User attribution for comments
 
+### Phase 3: Attachments & Productivity (NEW!)
+- ✅ File attachments on tasks (PDF, JPG, PNG, DOC, DOCX)
+- ✅ Secure file upload/download with 10MB limit
+- ✅ Productivity tracking & scoring (0-100)
+- ✅ User performance metrics (completion rate, on-time delivery, overdue)
+- ✅ Team productivity reports (Managers/Admins only)
+- ✅ Enhanced dashboards with productivity insights
+- ✅ Individual and team-wide analytics
+
+**📄 See [PHASE3_README.md](PHASE3_README.md) for detailed Phase 3 documentation**
+
 ## Project Structure
 
 ```
