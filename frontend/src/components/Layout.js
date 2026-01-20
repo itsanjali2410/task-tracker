@@ -19,6 +19,7 @@ const Layout = ({ children }) => {
     { path: '/tasks', icon: CheckSquare, label: 'All Tasks', roles: ['admin', 'manager'] },
     { path: '/my-tasks', icon: CheckSquare, label: 'My Tasks', roles: ['team_member'] },
     { path: '/users', icon: Users, label: 'User Management', roles: ['admin'] },
+    { path: '/reports', icon: TrendingUp, label: 'Reports', roles: ['admin', 'manager'] },
   ];
 
   const filteredNavItems = navItems.filter(item => item.roles.includes(user?.role));
