@@ -1,34 +1,21 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Global styles */
+.login-bg {
+  background-image: url('https://images.unsplash.com/photo-1651065223993-6e4ae5486ec4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwxfHxhZXJpYWwlMjBiZWFjaCUyMG9jZWFufGVufDB8fHx8MTc2ODkwNjYyNXww&ixlib=rb-4.1.0&q=85');
+  background-size: cover;
+  background-position: center;
+  position: relative;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+.login-overlay {
+  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.8));
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-.App-link {
-    color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.sidebar-active {
+  background: linear-gradient(90deg, rgba(15, 76, 129, 0.1) 0%, transparent 100%);
 }
