@@ -81,7 +81,8 @@ const MyTasks = () => {
           tasks.map((task) => (
             <div
               key={task.id}
-              className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
+              onClick={() => navigate(`/tasks/${task.id}`)}
+              className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow cursor-pointer"
               data-testid={`task-card-${task.id}`}
             >
               <div className="flex items-start justify-between mb-3">
