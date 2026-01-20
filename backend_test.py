@@ -310,6 +310,152 @@ class TripStarsAPITester:
         
         return success
 
+    def test_comments_api(self):
+        """Test comments API endpoints"""
+        member_token = self.tokens.get('team_member')
+        admin_token = self.tokens.get('admin')
+        
+        if not member_token or not self.tasks:
+            print("❌ Missing member token or no tasks available for comments test")
+            return False
+
+        task_id = self.tasks[0]['id']
+        
+        # Test create comment by team member (on their own task)
+        comment_data = {
+            "task_id": task_id,
+            "content": "This is a test comment from team member"
+        }
+        
+        success, comment_response = self.run_test(
+            "Create comment (Team Member)",
+            "POST",
+            "comments",
+            201,
+            data=comment_data,
+            token=member_token
+        )
+        
+        if success and 'id' in comment_response:
+            self.comments.append(comment_response)
+            print(f"   Comment created with ID: {comment_response['id']}")
+        else:
+            return False
+
+        # Test get comments for task
+        success, comments_list = self.run_test(
+            "Get comments for task",
+            "GET",
+            f"comments/task/{task_id}",
+            200,
+            token=member_token
+        )
+        
+        if not success:
+            return False
+
+        # Test get specific comment
+        comment_id = self.comments[0]['id']
+        success, _ = self.run_test(
+            "Get specific comment",
+            "GET",
+            f"comments/{comment_id}",
+            200,
+            token=member_token
+        )
+        
+        if not success:
+            return False
+
+        # Test update comment (only author can update)
+        success, _ = self.run_test(
+            "Update comment (Author)",
+            "PATCH",
+            f"comments/{comment_id}",
+            200,
+            data={"content": "Updated comment content"},
+            token=member_token
+        )
+        
+        if not success:
+            return False
+
+        # Test admin can create comment on any task
+        if admin_token:
+            admin_comment_data = {
+                "task_id": task_id,
+                "content": "Admin comment on task"
+            }
+            
+            success, admin_comment = self.run_test(
+                "Create comment (Admin)",
+                "POST",
+                "comments",
+                201,
+                data=admin_comment_data,
+                token=admin_token
+            )
+            
+            if success and 'id' in admin_comment:
+                self.comments.append(admin_comment)
+            else:
+                return False
+
+        return True
+
+    def test_comments_authorization(self):
+        """Test comments authorization rules"""
+        manager_token = self.tokens.get('manager')
+        member_token = self.tokens.get('team_member')
+        
+        if not manager_token or not member_token or not self.tasks:
+            print("❌ Missing tokens or tasks for comments authorization test")
+            return False
+
+        # Create a task assigned to manager (not team member)
+        manager_user = self.users.get('manager')
+        if not manager_user:
+            return False
+
+        task_data = {
+            "title": "Manager Task for Comments Test",
+            "description": "Task assigned to manager for testing comment permissions",
+            "priority": "medium",
+            "assigned_to": manager_user['id'],
+            "due_date": (datetime.now() + timedelta(days=5)).strftime('%Y-%m-%d')
+        }
+        
+        success, manager_task = self.run_test(
+            "Create task for manager (Comments auth test)",
+            "POST",
+            "tasks",
+            201,
+            data=task_data,
+            token=manager_token
+        )
+        
+        if not success or 'id' not in manager_task:
+            return False
+
+        manager_task_id = manager_task['id']
+
+        # Test team member cannot comment on task not assigned to them
+        comment_data = {
+            "task_id": manager_task_id,
+            "content": "Team member trying to comment on manager's task"
+        }
+        
+        success, _ = self.run_test(
+            "Create comment on unassigned task (Team Member - should fail)",
+            "POST",
+            "comments",
+            403,
+            data=comment_data,
+            token=member_token
+        )
+        
+        return success
+
 def main():
     print("🚀 Starting TripStars Task Management API Tests")
     print("=" * 60)
