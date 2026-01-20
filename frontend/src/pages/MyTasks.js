@@ -102,6 +102,9 @@ const MyTasks = () => {
                   <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
                 </div>
               </div>
+              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${getStatusBadge(task.status)}`}>
+                {task.status.replace('_', ' ')}
+              </span>
             </div>
           ))
         )}
