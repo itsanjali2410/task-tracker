@@ -10,6 +10,7 @@ class TripStarsAPITester:
         self.tokens = {}
         self.users = {}
         self.tasks = []
+        self.comments = []
         self.tests_run = 0
         self.tests_passed = 0
 
