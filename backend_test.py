@@ -137,7 +137,7 @@ class TripStarsAPITester:
             "Create new user (Admin)",
             "POST",
             "users",
-            200,
+            201,
             data=new_user_data,
             token=admin_token
         )
