@@ -277,6 +277,22 @@ Full API documentation is available at:
 }
 ```
 
+#### attachments (Phase 3)
+```javascript
+{
+  id: String,
+  task_id: String,
+  uploaded_by: String, // user_id
+  uploaded_by_name: String,
+  uploaded_by_email: String,
+  file_name: String,
+  file_type: String,
+  file_size: Number,
+  file_path: String,
+  uploaded_at: DateTime
+}
+```
+
 ## Deployment
 
 ### Backend Deployment
