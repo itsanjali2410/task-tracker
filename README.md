@@ -257,6 +257,7 @@ Full API documentation is available at:
   created_by: String, // user_id
   created_by_name: String,
   due_date: String,
+  completed_at: DateTime,
   created_at: DateTime,
   updated_at: DateTime
 }
