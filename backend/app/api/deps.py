@@ -28,11 +28,20 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail="User not found"
         )
     
-    # Convert ISO string to datetime if needed
+    # Convert ISO string to datetime if needed and add defaults if missing
     if isinstance(user.get('created_at'), str):
         user['created_at'] = datetime.fromisoformat(user['created_at'])
+    elif 'created_at' not in user:
+        user['created_at'] = datetime.now()
+    
     if isinstance(user.get('updated_at'), str):
         user['updated_at'] = datetime.fromisoformat(user['updated_at'])
+    elif 'updated_at' not in user:
+        user['updated_at'] = datetime.now()
+    
+    # Ensure is_active exists
+    if 'is_active' not in user:
+        user['is_active'] = True
     
     return UserResponse(**user)
 
