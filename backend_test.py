@@ -201,7 +201,7 @@ class TripStarsAPITester:
             "Create task (Manager)",
             "POST",
             "tasks",
-            200,
+            201,
             data=task_data,
             token=manager_token
         )
