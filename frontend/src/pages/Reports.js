@@ -48,11 +48,11 @@ const Reports = () => {
   if (!teamOverview) return null;
 
   return (
-    <div className=\"space-y-6\" data-testid=\"reports-page\">
+    <div className="space-y-6" data-testid="reports-page">
       {/* Header */}
       <div>
-        <h2 className=\"text-3xl font-heading font-bold text-text-primary mb-2\">Team Productivity Reports</h2>
-        <p className=\"text-text-secondary\">Overview of team performance and individual metrics</p>
+        <h2 className="text-3xl font-heading font-bold text-text-primary mb-2">Team Productivity Reports</h2>
+        <p className="text-text-secondary">Overview of team performance and individual metrics</p>
       </div>
 
       {/* Overview Stats */}
