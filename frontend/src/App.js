@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import UserManagement from './pages/UserManagement';
 import TaskList from './pages/TaskList';
 import MyTasks from './pages/MyTasks';
+import TaskDetail from './pages/TaskDetail';
 import './App.css';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -57,6 +58,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin', 'manager']}>
             <TaskList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tasks/:taskId"
+        element={
+          <ProtectedRoute>
+            <TaskDetail />
           </ProtectedRoute>
         }
       />
