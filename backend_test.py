@@ -827,6 +827,11 @@ def main():
         ("Task Status Update", tester.test_task_status_update),
         ("Comments API", tester.test_comments_api),
         ("Comments Authorization", tester.test_comments_authorization),
+        ("File Attachments API", tester.test_file_attachments_api),
+        ("Attachments Authorization", tester.test_attachments_authorization),
+        ("Delete Attachment", tester.test_delete_attachment),
+        ("Productivity Reports API", tester.test_productivity_reports_api),
+        ("Productivity Score Calculation", tester.test_productivity_score_calculation),
         ("Stats Endpoint", tester.test_stats_endpoint),
         ("Role-based Access", tester.test_role_based_access),
     ]
