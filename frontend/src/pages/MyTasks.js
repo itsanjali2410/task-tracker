@@ -102,21 +102,6 @@ const MyTasks = () => {
                   <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
                 </div>
               </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">Status</label>
-                  <select
-                    value={task.status}
-                    onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                    data-testid={`status-select-${task.id}`}
-                  >
-                    <option value="todo">To Do</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-              </div>
             </div>
           ))
         )}
