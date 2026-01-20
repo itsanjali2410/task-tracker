@@ -80,8 +80,13 @@ async def list_users(
     for user in users:
         if isinstance(user.get('created_at'), str):
             user['created_at'] = datetime.fromisoformat(user['created_at'])
+        elif 'created_at' not in user:
+            user['created_at'] = datetime.now(timezone.utc)
+        
         if isinstance(user.get('updated_at'), str):
             user['updated_at'] = datetime.fromisoformat(user['updated_at'])
+        elif 'updated_at' not in user:
+            user['updated_at'] = datetime.now(timezone.utc)
     
     return [UserResponse(**user) for user in users]
 
