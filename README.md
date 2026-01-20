@@ -212,6 +212,16 @@ Full API documentation is available at:
 - `PATCH /api/comments/{id}` - Update comment (author)
 - `DELETE /api/comments/{id}` - Delete comment (author, admin)
 
+#### Attachments (Phase 3)
+- `POST /api/attachments?task_id={id}` - Upload file to task
+- `GET /api/attachments/task/{task_id}` - List task attachments
+- `GET /api/attachments/{id}/download` - Download attachment
+- `DELETE /api/attachments/{id}` - Delete attachment (uploader, admin)
+
+#### Reports (Phase 3)
+- `GET /api/reports/user-productivity` - Get user productivity metrics
+- `GET /api/reports/team-overview` - Get team-wide analytics (Manager, Admin)
+
 #### Stats
 - `GET /api/stats` - Get task statistics
 
