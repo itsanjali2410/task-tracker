@@ -186,6 +186,10 @@ async def update_task(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
             )
+        
+        # Add completed_at timestamp when task is marked as completed
+        if update_data["status"] == "completed" and task.get("status") != "completed":
+            update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
     
     # Update timestamp
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
