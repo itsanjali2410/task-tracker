@@ -27,16 +27,6 @@ const MyTasks = () => {
     }
   };
 
-  const handleStatusChange = async (taskId, newStatus) => {
-    try {
-      await axios.patch(`${API}/tasks/${taskId}`, { status: newStatus });
-      toast.success('Task status updated');
-      fetchTasks();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to update task');
-    }
-  };
-
   const getStatusBadge = (status) => {
     const styles = {
       todo: 'bg-slate-100 text-slate-800 border-slate-200',
