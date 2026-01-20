@@ -41,11 +41,20 @@ async def login(login_data: LoginRequest):
     user.pop("hashed_password", None)
     user.pop("password", None)
     
-    # Convert datetime strings
+    # Convert datetime strings and add defaults if missing
     if isinstance(user.get('created_at'), str):
         user['created_at'] = datetime.fromisoformat(user['created_at'])
+    elif 'created_at' not in user:
+        user['created_at'] = datetime.now(timezone.utc)
+    
     if isinstance(user.get('updated_at'), str):
         user['updated_at'] = datetime.fromisoformat(user['updated_at'])
+    elif 'updated_at' not in user:
+        user['updated_at'] = datetime.now(timezone.utc)
+    
+    # Ensure is_active exists
+    if 'is_active' not in user:
+        user['is_active'] = True
     
     user_response = UserResponse(**user)
     
