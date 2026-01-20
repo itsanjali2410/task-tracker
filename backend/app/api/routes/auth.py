@@ -18,7 +18,10 @@ async def login(login_data: LoginRequest):
     db = get_database()
     user = await db.users.find_one({"email": login_data.email})
     
-    if not user or not verify_password(login_data.password, user["hashed_password"]):
+    # Handle both old 'password' field and new 'hashed_password' field
+    password_field = user.get("hashed_password") or user.get("password") if user else None
+    
+    if not user or not password_field or not verify_password(login_data.password, password_field):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
@@ -36,6 +39,7 @@ async def login(login_data: LoginRequest):
     # Remove sensitive fields
     user.pop("_id", None)
     user.pop("hashed_password", None)
+    user.pop("password", None)
     
     # Convert datetime strings
     if isinstance(user.get('created_at'), str):
