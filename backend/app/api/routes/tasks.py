@@ -198,8 +198,13 @@ async def update_task(
     # Convert datetime strings
     if isinstance(updated_task.get('created_at'), str):
         updated_task['created_at'] = datetime.fromisoformat(updated_task['created_at'])
+    elif 'created_at' not in updated_task:
+        updated_task['created_at'] = datetime.now(timezone.utc)
+    
     if isinstance(updated_task.get('updated_at'), str):
         updated_task['updated_at'] = datetime.fromisoformat(updated_task['updated_at'])
+    elif 'updated_at' not in updated_task:
+        updated_task['updated_at'] = datetime.now(timezone.utc)
     
     return TaskResponse(**updated_task)
 
