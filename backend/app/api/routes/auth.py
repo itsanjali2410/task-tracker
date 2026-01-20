@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.core.security import verify_password, create_access_token
 from app.db.mongodb import get_database
 from app.schemas.user import UserResponse
+from app.api.deps import get_current_user
 from datetime import datetime
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
