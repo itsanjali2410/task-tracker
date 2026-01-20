@@ -139,9 +139,6 @@ async def get_stats(current_user = Depends(get_current_user)):
         "completed": completed
     }
 
-from app.api.deps import get_current_user
-from fastapi import Depends
-
 @app.get("/api")
 async def root():
     """Root API endpoint"""
