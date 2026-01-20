@@ -180,6 +180,8 @@ async def get_team_overview(
         if task["status"] != "completed":
             try:
                 due_date = datetime.fromisoformat(task["due_date"])
+                if due_date.tzinfo is None:
+                    due_date = due_date.replace(tzinfo=timezone.utc)
             except:
                 due_date = datetime.strptime(task["due_date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
             
