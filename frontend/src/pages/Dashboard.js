@@ -11,6 +11,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({ total_tasks: 0, todo: 0, in_progress: 0, completed: 0 });
   const [recentTasks, setRecentTasks] = useState([]);
+  const [productivity, setProductivity] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,12 +20,22 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [statsRes, tasksRes] = await Promise.all([
-        axios.get(`${API}/stats`),
-        axios.get(`${API}/tasks`)
-      ]);
+      const statsRes = await axios.get(`${API}/stats`);
+      const tasksRes = await axios.get(`${API}/tasks`);
+      
       setStats(statsRes.data);
       setRecentTasks(tasksRes.data.slice(0, 5));
+
+      // Fetch productivity data for current user
+      try {
+        const productivityRes = await axios.get(`${API}/reports/user-productivity?user_id=${user.id}`);
+        if (productivityRes.data && productivityRes.data.length > 0) {
+          setProductivity(productivityRes.data[0]);
+        }
+      } catch (error) {
+        // Productivity data optional
+        console.log('Could not fetch productivity data');
+      }
     } catch (error) {
       toast.error('Failed to fetch dashboard data');
     } finally {
