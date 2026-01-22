@@ -277,18 +277,69 @@ async def delete_task(
     current_user: UserResponse = Depends(require_role(["admin", "manager"]))
 ):
     """
-    Delete task (Admin and Manager only)
+    DEPRECATED: Tasks should not be deleted
+    Use PATCH to update status to 'cancelled' instead
+    This endpoint is disabled for data integrity
+    """
+    raise HTTPException(
+        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        detail="Task deletion is not allowed. Use status update to 'cancelled' instead."
+    )
+
+@router.patch("/{task_id}/cancel", response_model=TaskResponse)
+async def cancel_task(
+    task_id: str,
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Cancel a task (Admin and Manager only)
+    - Sets status to 'cancelled'
+    - Task remains in database but excluded from active workflows
     """
     db = get_database()
-    result = await db.tasks.delete_one({"id": task_id})
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
     
-    if result.deleted_count == 0:
+    if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
     
-    # Also delete associated comments
-    await db.comments.delete_many({"task_id": task_id})
+    old_status = task.get("status")
     
-    return None
+    await db.tasks.update_one(
+        {"id": task_id},
+        {"$set": {
+            "status": "cancelled",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Log audit
+    await log_audit(
+        action_type="task_cancelled",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=task_id,
+        metadata={
+            "task_title": task["title"],
+            "old_status": old_status,
+            "new_status": "cancelled"
+        }
+    )
+    
+    # Fetch updated task
+    updated_task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    
+    if isinstance(updated_task.get('created_at'), str):
+        updated_task['created_at'] = datetime.fromisoformat(updated_task['created_at'])
+    elif 'created_at' not in updated_task:
+        updated_task['created_at'] = datetime.now(timezone.utc)
+    
+    if isinstance(updated_task.get('updated_at'), str):
+        updated_task['updated_at'] = datetime.fromisoformat(updated_task['updated_at'])
+    elif 'updated_at' not in updated_task:
+        updated_task['updated_at'] = datetime.now(timezone.utc)
+    
+    return TaskResponse(**updated_task)
