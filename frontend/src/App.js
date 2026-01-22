@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { WebSocketProvider } from './contexts/WebSocketContext';
 import { Toaster } from 'sonner';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -11,6 +12,7 @@ import MyTasks from './pages/MyTasks';
 import TaskDetail from './pages/TaskDetail';
 import Reports from './pages/Reports';
 import AuditLogs from './pages/AuditLogs';
+import Chat from './pages/Chat';
 import './App.css';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -95,6 +97,14 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/chat"
+        element={
+          <ProtectedRoute>
+            <Chat />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/" element={<Navigate to="/dashboard" />} />
     </Routes>
   );
@@ -103,10 +113,12 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-        <Toaster position="top-right" richColors />
-      </BrowserRouter>
+      <WebSocketProvider>
+        <BrowserRouter>
+          <AppRoutes />
+          <Toaster position="top-right" richColors />
+        </BrowserRouter>
+      </WebSocketProvider>
     </AuthProvider>
   );
 }
