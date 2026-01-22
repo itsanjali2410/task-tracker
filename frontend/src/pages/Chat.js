@@ -453,26 +453,37 @@ const Chat = () => {
           <>
             {/* Chat Header */}
             <div className="bg-white border-b border-slate-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  selectedConv.is_group ? 'bg-purple-100' : 'bg-primary/20'
-                }`}>
-                  {selectedConv.is_group ? (
-                    <Users size={20} className="text-purple-600" />
-                  ) : (
-                    <span className="text-primary font-semibold">
-                      {getConversationName(selectedConv).charAt(0)}
-                    </span>
-                  )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    selectedConv.is_group ? 'bg-purple-100' : 'bg-primary/20'
+                  }`}>
+                    {selectedConv.is_group ? (
+                      <Users size={20} className="text-purple-600" />
+                    ) : (
+                      <span className="text-primary font-semibold">
+                        {getConversationName(selectedConv).charAt(0)}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-text-primary">{getConversationName(selectedConv)}</h3>
+                    {selectedConv.is_group && (
+                      <p className="text-sm text-text-secondary">
+                        {selectedConv.participants.length} members
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-text-primary">{getConversationName(selectedConv)}</h3>
-                  {selectedConv.is_group && (
-                    <p className="text-sm text-text-secondary">
-                      {selectedConv.participants.length} members
-                    </p>
-                  )}
-                </div>
+                <button
+                  onClick={fetchPinnedMessages}
+                  className="p-2 hover:bg-slate-100 rounded-md transition-colors flex items-center gap-1"
+                  title="View Pinned Messages"
+                  data-testid="view-pinned-btn"
+                >
+                  <Pin size={18} className="text-primary" />
+                  <span className="text-sm text-text-secondary">Pinned</span>
+                </button>
               </div>
             </div>
 
@@ -481,39 +492,67 @@ const Chat = () => {
               {messages.map(message => (
                 <div
                   key={message.id}
-                  className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'} group`}
                   data-testid={`message-${message.id}`}
                 >
-                  <div className={`max-w-[70%] ${
-                    message.sender_id === user.id 
-                      ? 'bg-primary text-white rounded-l-lg rounded-tr-lg' 
-                      : 'bg-white text-text-primary rounded-r-lg rounded-tl-lg shadow-sm'
-                  } p-3`}>
-                    {message.sender_id !== user.id && selectedConv.is_group && (
-                      <p className="text-xs font-medium mb-1 opacity-70">{message.sender_name}</p>
+                  <div className="relative">
+                    {/* Message Menu Button */}
+                    <button
+                      onClick={() => setMessageMenuId(messageMenuId === message.id ? null : message.id)}
+                      className={`absolute -top-1 ${message.sender_id === user.id ? '-left-6' : '-right-6'} opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-opacity`}
+                    >
+                      <MoreVertical size={14} className="text-slate-500" />
+                    </button>
+                    
+                    {/* Message Menu */}
+                    {messageMenuId === message.id && (
+                      <div className={`absolute top-6 ${message.sender_id === user.id ? '-left-20' : '-right-20'} bg-white shadow-lg rounded-md py-1 z-10`}>
+                        <button
+                          onClick={() => pinMessage(message.id, !message.is_pinned)}
+                          className="w-full px-4 py-2 text-sm text-left hover:bg-slate-100 flex items-center gap-2"
+                        >
+                          <Pin size={14} />
+                          {message.is_pinned ? 'Unpin' : 'Pin'}
+                        </button>
+                      </div>
                     )}
                     
-                    {message.message_type === 'attachment' && message.attachment_id ? (
-                      <button
-                        onClick={() => downloadAttachment(message.attachment_id, message.attachment_name)}
-                        className={`flex items-center gap-2 ${
-                          message.sender_id === user.id ? 'text-white/90 hover:text-white' : 'text-primary hover:text-primary-hover'
-                        }`}
-                      >
-                        <Download size={16} />
-                        <span className="underline">{message.attachment_name || 'Download'}</span>
-                      </button>
-                    ) : (
-                      <p className="break-words">{message.content}</p>
-                    )}
-                    
-                    <div className={`flex items-center justify-end gap-1 mt-1 ${
-                      message.sender_id === user.id ? 'text-white/70' : 'text-text-secondary'
-                    }`}>
-                      <span className="text-xs">
-                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      {getReadStatus(message)}
+                    <div className={`max-w-[70%] ${
+                      message.sender_id === user.id 
+                        ? 'bg-primary text-white rounded-l-lg rounded-tr-lg' 
+                        : 'bg-white text-text-primary rounded-r-lg rounded-tl-lg shadow-sm'
+                    } p-3 ${message.is_pinned ? 'ring-2 ring-yellow-400' : ''}`}>
+                      {message.is_pinned && (
+                        <div className={`flex items-center gap-1 text-xs mb-1 ${message.sender_id === user.id ? 'text-white/70' : 'text-yellow-600'}`}>
+                          <Pin size={10} /> Pinned
+                        </div>
+                      )}
+                      {message.sender_id !== user.id && selectedConv.is_group && (
+                        <p className="text-xs font-medium mb-1 opacity-70">{message.sender_name}</p>
+                      )}
+                      
+                      {message.message_type === 'attachment' && message.attachment_id ? (
+                        <button
+                          onClick={() => downloadAttachment(message.attachment_id, message.attachment_name)}
+                          className={`flex items-center gap-2 ${
+                            message.sender_id === user.id ? 'text-white/90 hover:text-white' : 'text-primary hover:text-primary-hover'
+                          }`}
+                        >
+                          <Download size={16} />
+                          <span className="underline">{message.attachment_name || 'Download'}</span>
+                        </button>
+                      ) : (
+                        <p className="break-words">{message.content}</p>
+                      )}
+                      
+                      <div className={`flex items-center justify-end gap-1 mt-1 ${
+                        message.sender_id === user.id ? 'text-white/70' : 'text-text-secondary'
+                      }`}>
+                        <span className="text-xs">
+                          {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {getReadStatus(message)}
+                      </div>
                     </div>
                   </div>
                 </div>
