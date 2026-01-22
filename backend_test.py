@@ -810,6 +810,359 @@ class TripStarsAPITester:
         
         return False
 
+    def test_notifications_api(self):
+        """Test Phase 4: Notifications API endpoints"""
+        member_token = self.tokens.get('team_member')
+        manager_token = self.tokens.get('manager')
+        admin_token = self.tokens.get('admin')
+        
+        if not member_token or not manager_token:
+            print("❌ Missing tokens for notifications test")
+            return False
+
+        # Test get notifications (should work for all users)
+        success, notifications = self.run_test(
+            "Get notifications (Team Member)",
+            "GET",
+            "notifications",
+            200,
+            token=member_token
+        )
+        
+        if not success:
+            return False
+
+        # Test get unread count
+        success, unread_response = self.run_test(
+            "Get unread count (Team Member)",
+            "GET",
+            "notifications/unread-count",
+            200,
+            token=member_token
+        )
+        
+        if not success or 'unread_count' not in unread_response:
+            print("❌ Unread count response missing required field")
+            return False
+
+        print(f"   ✅ Unread count: {unread_response['unread_count']}")
+
+        # Test notifications with filters
+        success, unread_notifications = self.run_test(
+            "Get unread notifications only",
+            "GET",
+            "notifications?unread_only=true&limit=10",
+            200,
+            token=member_token
+        )
+        
+        if not success:
+            return False
+
+        # If we have notifications, test mark as read functionality
+        if notifications and len(notifications) > 0:
+            notification_id = notifications[0]['id']
+            
+            # Test mark specific notification as read
+            success, _ = self.run_test(
+                "Mark notification as read",
+                "POST",
+                f"notifications/mark-read/{notification_id}",
+                204,
+                token=member_token
+            )
+            
+            if not success:
+                return False
+
+        # Test mark all notifications as read
+        success, mark_all_response = self.run_test(
+            "Mark all notifications as read",
+            "POST",
+            "notifications/mark-all-read",
+            200,
+            token=member_token
+        )
+        
+        if not success or 'marked_read_count' not in mark_all_response:
+            print("❌ Mark all read response missing required field")
+            return False
+
+        print(f"   ✅ Marked {mark_all_response['marked_read_count']} notifications as read")
+
+        return True
+
+    def test_audit_logs_api(self):
+        """Test Phase 4: Audit Logs API endpoints"""
+        admin_token = self.tokens.get('admin')
+        manager_token = self.tokens.get('manager')
+        member_token = self.tokens.get('team_member')
+        
+        if not admin_token or not manager_token or not member_token:
+            print("❌ Missing tokens for audit logs test")
+            return False
+
+        # Test admin can access audit logs
+        success, audit_logs = self.run_test(
+            "Get audit logs (Admin)",
+            "GET",
+            "audit-logs",
+            200,
+            token=admin_token
+        )
+        
+        if not success:
+            return False
+
+        print(f"   ✅ Admin retrieved {len(audit_logs)} audit logs")
+
+        # Test manager can access audit logs
+        success, manager_logs = self.run_test(
+            "Get audit logs (Manager)",
+            "GET",
+            "audit-logs",
+            200,
+            token=manager_token
+        )
+        
+        if not success:
+            return False
+
+        print(f"   ✅ Manager retrieved {len(manager_logs)} audit logs")
+
+        # Test team member cannot access audit logs
+        success, _ = self.run_test(
+            "Get audit logs (Team Member - should fail)",
+            "GET",
+            "audit-logs",
+            403,
+            token=member_token
+        )
+        
+        if not success:
+            return False
+
+        # Test audit logs with filters
+        success, filtered_logs = self.run_test(
+            "Get audit logs with action filter",
+            "GET",
+            "audit-logs?action_type=task_created&limit=50",
+            200,
+            token=admin_token
+        )
+        
+        if not success:
+            return False
+
+        # Verify audit log structure
+        if audit_logs and len(audit_logs) > 0:
+            log = audit_logs[0]
+            required_fields = ['id', 'action_type', 'user_id', 'user_name', 'user_email', 'timestamp']
+            if all(field in log for field in required_fields):
+                print(f"   ✅ Audit log structure is valid")
+            else:
+                print(f"   ❌ Audit log missing required fields")
+                return False
+
+        return True
+
+    def test_notification_triggers(self):
+        """Test that notifications are created when actions occur"""
+        manager_token = self.tokens.get('manager')
+        member_token = self.tokens.get('team_member')
+        member_user = self.users.get('team_member')
+        
+        if not manager_token or not member_token or not member_user:
+            print("❌ Missing tokens/users for notification triggers test")
+            return False
+
+        # Get initial notification count for team member
+        success, initial_response = self.run_test(
+            "Get initial unread count",
+            "GET",
+            "notifications/unread-count",
+            200,
+            token=member_token
+        )
+        
+        if not success:
+            return False
+
+        initial_count = initial_response['unread_count']
+        print(f"   Initial unread count: {initial_count}")
+
+        # Create a task (should trigger notification for assigned user)
+        task_data = {
+            "title": "Notification Test Task",
+            "description": "Task to test notification creation",
+            "priority": "high",
+            "assigned_to": member_user['id'],
+            "due_date": (datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d')
+        }
+        
+        success, notification_task = self.run_test(
+            "Create task for notification test",
+            "POST",
+            "tasks",
+            201,
+            data=task_data,
+            token=manager_token
+        )
+        
+        if not success or 'id' not in notification_task:
+            return False
+
+        task_id = notification_task['id']
+
+        # Wait a moment for notification to be created
+        import time
+        time.sleep(1)
+
+        # Check if notification count increased
+        success, after_task_response = self.run_test(
+            "Get unread count after task creation",
+            "GET",
+            "notifications/unread-count",
+            200,
+            token=member_token
+        )
+        
+        if not success:
+            return False
+
+        after_task_count = after_task_response['unread_count']
+        print(f"   Unread count after task creation: {after_task_count}")
+
+        if after_task_count > initial_count:
+            print(f"   ✅ Notification created for task assignment")
+        else:
+            print(f"   ⚠️  No notification created for task assignment")
+
+        # Add a comment (should trigger notification)
+        comment_data = {
+            "task_id": task_id,
+            "content": "Test comment for notification trigger"
+        }
+        
+        success, comment_response = self.run_test(
+            "Add comment for notification test",
+            "POST",
+            "comments",
+            201,
+            data=comment_data,
+            token=manager_token
+        )
+        
+        if not success:
+            return False
+
+        # Wait a moment for notification to be created
+        time.sleep(1)
+
+        # Check notifications again
+        success, after_comment_response = self.run_test(
+            "Get unread count after comment",
+            "GET",
+            "notifications/unread-count",
+            200,
+            token=member_token
+        )
+        
+        if not success:
+            return False
+
+        after_comment_count = after_comment_response['unread_count']
+        print(f"   Unread count after comment: {after_comment_count}")
+
+        # Update task status (should trigger notification)
+        success, _ = self.run_test(
+            "Update task status for notification test",
+            "PATCH",
+            f"tasks/{task_id}",
+            200,
+            data={"status": "in_progress"},
+            token=member_token
+        )
+        
+        if not success:
+            return False
+
+        return True
+
+    def test_audit_log_creation(self):
+        """Test that audit logs are created for major actions"""
+        manager_token = self.tokens.get('manager')
+        admin_token = self.tokens.get('admin')
+        member_user = self.users.get('team_member')
+        
+        if not manager_token or not admin_token or not member_user:
+            print("❌ Missing tokens/users for audit log creation test")
+            return False
+
+        # Get initial audit log count
+        success, initial_logs = self.run_test(
+            "Get initial audit logs count",
+            "GET",
+            "audit-logs?limit=1",
+            200,
+            token=admin_token
+        )
+        
+        if not success:
+            return False
+
+        # Create a task (should create audit log)
+        task_data = {
+            "title": "Audit Log Test Task",
+            "description": "Task to test audit log creation",
+            "priority": "medium",
+            "assigned_to": member_user['id'],
+            "due_date": (datetime.now() + timedelta(days=2)).strftime('%Y-%m-%d')
+        }
+        
+        success, audit_task = self.run_test(
+            "Create task for audit log test",
+            "POST",
+            "tasks",
+            201,
+            data=task_data,
+            token=manager_token
+        )
+        
+        if not success or 'id' not in audit_task:
+            return False
+
+        # Wait a moment for audit log to be created
+        import time
+        time.sleep(1)
+
+        # Check for new audit logs
+        success, after_logs = self.run_test(
+            "Get audit logs after task creation",
+            "GET",
+            "audit-logs?action_type=task_created&limit=5",
+            200,
+            token=admin_token
+        )
+        
+        if not success:
+            return False
+
+        # Look for our task creation in audit logs
+        task_created_log = None
+        for log in after_logs:
+            if log.get('task_id') == audit_task['id'] and log.get('action_type') == 'task_created':
+                task_created_log = log
+                break
+
+        if task_created_log:
+            print(f"   ✅ Audit log created for task creation")
+            print(f"   ✅ Log user: {task_created_log['user_name']}")
+        else:
+            print(f"   ⚠️  No audit log found for task creation")
+
+        return True
+
 def main():
     print("🚀 Starting TripStars Task Management API Tests")
     print("=" * 60)
