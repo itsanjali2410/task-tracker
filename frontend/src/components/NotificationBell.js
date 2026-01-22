@@ -1,19 +1,68 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { Bell, X, Check } from 'lucide-react';
+import { Bell, X, Check, Volume2, VolumeX } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Create AudioContext for notification sound
+const createNotificationSound = () => {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    return (frequency = 800, duration = 0.15) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + duration);
+    };
+  } catch (e) {
+    console.warn('AudioContext not supported');
+    return () => {};
+  }
+};
+
 const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem('notificationSoundEnabled');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const dropdownRef = useRef(null);
+  const previousUnreadCount = useRef(0);
+  const playSound = useRef(createNotificationSound());
   const navigate = useNavigate();
+
+  // Play notification sound when new notifications arrive
+  const playNotificationSound = useCallback(() => {
+    if (soundEnabled && playSound.current) {
+      // Play two quick beeps for notification
+      playSound.current(880, 0.1);
+      setTimeout(() => playSound.current(1100, 0.15), 120);
+    }
+  }, [soundEnabled]);
+
+  // Toggle sound setting
+  const toggleSound = () => {
+    const newValue = !soundEnabled;
+    setSoundEnabled(newValue);
+    localStorage.setItem('notificationSoundEnabled', JSON.stringify(newValue));
+    toast.success(newValue ? 'Notification sound enabled' : 'Notification sound disabled');
+  };
 
   useEffect(() => {
     fetchUnreadCount();

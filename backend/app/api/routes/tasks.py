@@ -195,16 +195,43 @@ async def update_task(
         # Admins and Managers can update all fields
         update_data = task_update.model_dump(exclude_unset=True)
         
-        # If assigned_to is being updated, fetch new user details
-        if "assigned_to" in update_data:
+        # If assigned_to is being updated, fetch new user details and log reassignment
+        if "assigned_to" in update_data and update_data["assigned_to"] != task.get("assigned_to"):
             assigned_user = await db.users.find_one({"id": update_data["assigned_to"]}, {"_id": 0})
             if not assigned_user:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Assigned user not found"
                 )
+            
+            old_assignee = task.get("assigned_to_name", "Unassigned")
+            new_assignee = assigned_user["full_name"]
+            
             update_data["assigned_to_email"] = assigned_user["email"]
-            update_data["assigned_to_name"] = assigned_user["full_name"]
+            update_data["assigned_to_name"] = new_assignee
+            
+            # Log task reassignment audit
+            await log_audit(
+                action_type="task_reassigned",
+                user_id=current_user.id,
+                user_name=current_user.full_name,
+                user_email=current_user.email,
+                task_id=task_id,
+                metadata={
+                    "task_title": task["title"],
+                    "old_assignee": old_assignee,
+                    "new_assignee": new_assignee,
+                    "new_assignee_email": assigned_user["email"]
+                }
+            )
+            
+            # Create notification for new assignee
+            await create_notification(
+                user_id=update_data["assigned_to"],
+                notification_type="task_assigned",
+                message=f"Task '{task['title']}' has been reassigned to you by {current_user.full_name}",
+                related_task_id=task_id
+            )
     
     if not update_data:
         raise HTTPException(
