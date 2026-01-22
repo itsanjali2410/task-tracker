@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from app.models.notification import NotificationInDB
 from app.db.mongodb import get_database
+from app.services.websocket_manager import manager
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,12 @@ async def create_notification(
     related_task_id: str = None
 ):
     """
-    Create a notification for a user
+    Create a notification for a user and push via WebSocket
+    
+    Flow:
+    1. Save notification in MongoDB
+    2. Push via WebSocket (real-time)
+    3. Frontend updates UI + plays sound
     
     Args:
         user_id: ID of user to notify
@@ -36,8 +42,20 @@ async def create_notification(
         notification_dict = notification.model_dump()
         notification_dict["created_at"] = notification_dict["created_at"].isoformat()
         
+        # Step 1: Save to MongoDB
         await db.notifications.insert_one(notification_dict)
         logger.info(f"Notification created for user {user_id}: {notification_type}")
+        
+        # Step 2: Push via WebSocket (real-time)
+        await manager.broadcast_notification(user_id, {
+            "id": notification.id,
+            "type": notification_type,
+            "message": message,
+            "related_task_id": related_task_id,
+            "is_read": False,
+            "created_at": notification_dict["created_at"]
+        })
+        logger.info(f"Notification pushed via WebSocket to user {user_id}")
         
         return notification
     except Exception as e:
