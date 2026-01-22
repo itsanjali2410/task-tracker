@@ -123,13 +123,20 @@ const UserManagement = () => {
     setShowPasswordModal(true);
   };
 
+  // All available roles
+  const availableRoles = [
+    { value: 'admin', label: 'Admin', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+    { value: 'manager', label: 'Manager', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    { value: 'team_member', label: 'Team Member', color: 'bg-green-100 text-green-700 border-green-200' },
+    { value: 'sales', label: 'Sales', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+    { value: 'operations', label: 'Operations', color: 'bg-teal-100 text-teal-700 border-teal-200' },
+    { value: 'marketing', label: 'Marketing', color: 'bg-pink-100 text-pink-700 border-pink-200' },
+    { value: 'accounts', label: 'Accounts', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' }
+  ];
+
   const getRoleBadge = (role) => {
-    const styles = {
-      admin: 'bg-purple-100 text-purple-700 border-purple-200',
-      manager: 'bg-blue-100 text-blue-700 border-blue-200',
-      team_member: 'bg-green-100 text-green-700 border-green-200'
-    };
-    return styles[role] || styles.team_member;
+    const roleConfig = availableRoles.find(r => r.value === role);
+    return roleConfig?.color || 'bg-gray-100 text-gray-700 border-gray-200';
   };
 
   if (loading) {
