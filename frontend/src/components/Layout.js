@@ -5,6 +5,10 @@ import { LayoutDashboard, CheckSquare, Users, LogOut, Menu, X, TrendingUp, Shiel
 import { useState } from 'react';
 import NotificationBell from './NotificationBell';
 
+// Role constants - must match backend
+const ALL_STAFF_ROLES = ['admin', 'manager', 'team_member', 'sales', 'operations', 'marketing', 'accounts'];
+const MANAGER_ROLES = ['admin', 'manager'];
+
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -15,14 +19,15 @@ const Layout = ({ children }) => {
     navigate('/login');
   };
 
+  // Navigation items with role-based access
   const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'manager', 'team_member'] },
-    { path: '/tasks', icon: CheckSquare, label: 'All Tasks', roles: ['admin', 'manager', 'team_member'] },
+    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ALL_STAFF_ROLES },
+    { path: '/tasks', icon: CheckSquare, label: 'All Tasks', roles: ALL_STAFF_ROLES },
     { path: '/my-tasks', icon: CheckSquare, label: 'My Tasks', roles: ['team_member'] },
-    { path: '/chat', icon: MessageCircle, label: 'Messages', roles: ['admin', 'manager', 'team_member'] },
+    { path: '/chat', icon: MessageCircle, label: 'Messages', roles: ALL_STAFF_ROLES },
     { path: '/users', icon: Users, label: 'User Management', roles: ['admin'] },
-    { path: '/reports', icon: TrendingUp, label: 'Reports', roles: ['admin', 'manager'] },
-    { path: '/audit-logs', icon: Shield, label: 'Audit Logs', roles: ['admin', 'manager'] },
+    { path: '/reports', icon: TrendingUp, label: 'Reports', roles: MANAGER_ROLES },
+    { path: '/audit-logs', icon: Shield, label: 'Audit Logs', roles: MANAGER_ROLES },
   ];
 
   const filteredNavItems = navItems.filter(item => item.roles.includes(user?.role));
