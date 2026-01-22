@@ -92,7 +92,15 @@ const NotificationBell = () => {
   const fetchUnreadCount = async () => {
     try {
       const response = await axios.get(`${API}/notifications/unread-count`);
-      setUnreadCount(response.data.unread_count);
+      const newCount = response.data.unread_count;
+      
+      // Play sound if new notifications arrived
+      if (newCount > previousUnreadCount.current && previousUnreadCount.current !== 0) {
+        playNotificationSound();
+      }
+      
+      previousUnreadCount.current = newCount;
+      setUnreadCount(newCount);
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
     }
