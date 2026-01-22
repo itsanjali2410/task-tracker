@@ -148,7 +148,13 @@ async def list_conversations(
             "read_by": {"$nin": [current_user.id]}
         })
         
-        result.append(ConversationResponse(**conv, unread_count=unread_count))
+        # Check if current user has pinned this conversation
+        is_pinned = current_user.id in conv.get("pinned_by", [])
+        
+        result.append(ConversationResponse(**conv, unread_count=unread_count, is_pinned=is_pinned))
+    
+    # Sort: pinned first, then by updated_at
+    result.sort(key=lambda x: (not x.is_pinned, x.updated_at), reverse=True)
     
     return result
 
