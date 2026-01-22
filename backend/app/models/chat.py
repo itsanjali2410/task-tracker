@@ -17,6 +17,8 @@ class ConversationInDB(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_message: Optional[str] = None
     last_message_at: Optional[datetime] = None
+    # Pinning feature - list of user IDs who pinned this conversation
+    pinned_by: List[str] = []
 
 class MessageInDB(BaseModel):
     """Chat Message model"""
@@ -31,6 +33,10 @@ class MessageInDB(BaseModel):
     attachment_type: Optional[str] = None
     read_by: List[str] = []  # List of user IDs who have read this message
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Pinning feature
+    is_pinned: bool = False
+    pinned_by: Optional[str] = None
+    pinned_at: Optional[datetime] = None
 
 class ChatAttachmentInDB(BaseModel):
     """Chat Attachment model"""
