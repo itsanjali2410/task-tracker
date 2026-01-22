@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import UserCreate, UserResponse, UserUpdate, PasswordReset
 from app.models.user import UserInDB
 from app.core.security import get_password_hash
 from app.db.mongodb import get_database
