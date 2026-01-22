@@ -53,6 +53,17 @@ TripStars is a comprehensive task management system designed specifically for tr
 
 **📄 See [PHASE3_README.md](PHASE3_README.md) for detailed Phase 3 documentation**
 
+### Phase 4: Notifications & Automation (NEW!)
+- ✅ In-app notifications with bell icon and unread count
+- ✅ Email notifications via SMTP (task assigned, overdue, comments)
+- ✅ Background scheduler for automated overdue reminders
+- ✅ Comprehensive audit logging system
+- ✅ Notification triggers for all major actions
+- ✅ Audit logs page for admins/managers
+- ✅ Email configuration with environment variables
+
+**📄 See [PHASE4_README.md](PHASE4_README.md) for detailed Phase 4 documentation**
+
 ## Project Structure
 
 ```
