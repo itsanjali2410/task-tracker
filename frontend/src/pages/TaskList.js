@@ -57,7 +57,8 @@ const TaskList = () => {
     const styles = {
       todo: 'bg-slate-100 text-slate-800 border-slate-200',
       in_progress: 'bg-blue-50 text-blue-700 border-blue-200',
-      completed: 'bg-green-50 text-green-700 border-green-200'
+      completed: 'bg-green-50 text-green-700 border-green-200',
+      cancelled: 'bg-red-50 text-red-700 border-red-200'
     };
     return styles[status] || styles.todo;
   };
