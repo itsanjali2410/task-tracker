@@ -10,6 +10,7 @@ import TaskList from './pages/TaskList';
 import MyTasks from './pages/MyTasks';
 import TaskDetail from './pages/TaskDetail';
 import Reports from './pages/Reports';
+import AuditLogs from './pages/AuditLogs';
 import './App.css';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
