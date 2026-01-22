@@ -93,11 +93,16 @@ const Layout = ({ children }) => {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center px-6">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden mr-4" data-testid="open-sidebar-btn">
-            <Menu size={24} className="text-text-primary" />
-          </button>
-          <h1 className="text-xl font-heading font-semibold text-text-primary">Task Management System</h1>
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6">
+          <div className="flex items-center">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden mr-4" data-testid="open-sidebar-btn">
+              <Menu size={24} className="text-text-primary" />
+            </button>
+            <h1 className="text-xl font-heading font-semibold text-text-primary">Task Management System</h1>
+          </div>
+          
+          {/* Notification Bell */}
+          <NotificationBell />
         </header>
 
         {/* Content */}
