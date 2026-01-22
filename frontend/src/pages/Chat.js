@@ -722,6 +722,112 @@ const Chat = () => {
           </div>
         </div>
       )}
+
+      {/* Search Modal */}
+      {showSearchModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-heading font-semibold text-text-primary">Search Messages</h3>
+              <button onClick={() => { setShowSearchModal(false); setSearchResults([]); setSearchQuery(''); }} className="p-1 hover:bg-slate-100 rounded">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && searchMessages()}
+                placeholder="Search in messages..."
+                className="flex-1 px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                data-testid="search-input"
+              />
+              <button
+                onClick={searchMessages}
+                disabled={searching || !searchQuery.trim()}
+                className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-md disabled:opacity-50"
+              >
+                {searching ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+            
+            <p className="text-sm text-text-secondary mb-2">
+              {selectedConv ? `Searching in: ${getConversationName(selectedConv)}` : 'Searching all conversations'}
+            </p>
+            
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {searchResults.length === 0 ? (
+                <p className="text-center text-text-secondary py-4">
+                  {searchQuery ? 'No messages found' : 'Enter a search term'}
+                </p>
+              ) : (
+                searchResults.map(result => (
+                  <div
+                    key={result.id}
+                    className="p-3 bg-slate-50 rounded-lg hover:bg-slate-100 cursor-pointer"
+                    onClick={() => {
+                      const conv = conversations.find(c => c.id === result.conversation_id);
+                      if (conv) {
+                        selectConversation(conv);
+                        setShowSearchModal(false);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-primary">{result.conversation_name}</span>
+                      <span className="text-xs text-text-secondary">
+                        {new Date(result.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-text-primary">{result.content}</p>
+                    <p className="text-xs text-text-secondary mt-1">by {result.sender_name}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pinned Messages Modal */}
+      {showPinnedMessages && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-heading font-semibold text-text-primary">Pinned Messages</h3>
+              <button onClick={() => setShowPinnedMessages(false)} className="p-1 hover:bg-slate-100 rounded">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="max-h-80 overflow-y-auto space-y-3">
+              {pinnedMessages.length === 0 ? (
+                <p className="text-center text-text-secondary py-4">No pinned messages</p>
+              ) : (
+                pinnedMessages.map(msg => (
+                  <div key={msg.id} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-text-primary">{msg.sender_name}</span>
+                      <button
+                        onClick={() => pinMessage(msg.id, false)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Unpin
+                      </button>
+                    </div>
+                    <p className="text-sm text-text-primary">{msg.content}</p>
+                    <p className="text-xs text-text-secondary mt-1">
+                      {new Date(msg.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
