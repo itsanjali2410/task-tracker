@@ -85,15 +85,15 @@ async def list_assignable_users(
 ):
     """
     List users available for task assignment
-    - Team members see only managers and other team members (not admins)
+    - Non-admin roles see everyone except admins
     - Admins and managers see all users
     """
     db = get_database()
     
-    if current_user.role == "team_member":
-        # Team members can only see managers and team members
+    if current_user.role in NON_ADMIN_ROLES:
+        # Non-admin roles can see everyone except admins
         users = await db.users.find(
-            {"role": {"$in": ["manager", "team_member"]}, "is_active": True},
+            {"role": {"$ne": "admin"}, "is_active": True},
             {"_id": 0, "hashed_password": 0}
         ).to_list(1000)
     else:
@@ -119,7 +119,7 @@ async def list_assignable_users(
 
 @router.get("", response_model=List[UserResponse])
 async def list_users(
-    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+    current_user: UserResponse = Depends(require_role(MANAGER_ROLES))
 ):
     """
     List all users (Admin and Manager only)
