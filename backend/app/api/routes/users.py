@@ -3,6 +3,7 @@ from typing import List
 from app.schemas.user import UserCreate, UserResponse, UserUpdate, PasswordReset
 from app.models.user import UserInDB
 from app.core.security import get_password_hash
+from app.core.roles import VALID_ROLES, USER_MANAGEMENT_ROLES, STAFF_ROLES, NON_ADMIN_ROLES
 from app.db.mongodb import get_database
 from app.api.deps import get_current_user, require_role
 from app.services.audit_service import log_audit
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_data: UserCreate,
-    current_user: UserResponse = Depends(require_role(["admin"]))
+    current_user: UserResponse = Depends(require_role(USER_MANAGEMENT_ROLES))
 ):
     """
     Create a new user (Admin only)
@@ -32,12 +33,11 @@ async def create_user(
             detail="User with this email already exists"
         )
     
-    # Validate role
-    valid_roles = ["admin", "manager", "team_member"]
-    if user_data.role not in valid_roles:
+    # Validate role - now supports extended roles
+    if user_data.role not in VALID_ROLES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}"
+            detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}"
         )
     
     # Create user document
