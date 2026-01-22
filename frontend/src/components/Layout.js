@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, CheckSquare, Users, LogOut, Menu, X, TrendingUp, Shield } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Users, LogOut, Menu, X, TrendingUp, Shield, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 import NotificationBell from './NotificationBell';
 
@@ -17,8 +17,9 @@ const Layout = ({ children }) => {
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'manager', 'team_member'] },
-    { path: '/tasks', icon: CheckSquare, label: 'All Tasks', roles: ['admin', 'manager'] },
+    { path: '/tasks', icon: CheckSquare, label: 'All Tasks', roles: ['admin', 'manager', 'team_member'] },
     { path: '/my-tasks', icon: CheckSquare, label: 'My Tasks', roles: ['team_member'] },
+    { path: '/chat', icon: MessageCircle, label: 'Messages', roles: ['admin', 'manager', 'team_member'] },
     { path: '/users', icon: Users, label: 'User Management', roles: ['admin'] },
     { path: '/reports', icon: TrendingUp, label: 'Reports', roles: ['admin', 'manager'] },
     { path: '/audit-logs', icon: Shield, label: 'Audit Logs', roles: ['admin', 'manager'] },
