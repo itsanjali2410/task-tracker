@@ -1,18 +1,10 @@
-import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-# Email configuration from environment variables
-SMTP_HOST = os.getenv("SMTP_HOST", "")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", SMTP_USER)
-EMAIL_ENABLED = os.getenv("EMAIL_ENABLED", "false").lower() == "true"
 
 def send_email(to_email: str, subject: str, body: str) -> bool:
     """
