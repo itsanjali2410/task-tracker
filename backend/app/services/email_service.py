@@ -18,27 +18,27 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
     Returns:
         bool: True if email sent successfully, False otherwise
     """
-    if not EMAIL_ENABLED:
+    if not settings.EMAIL_ENABLED:
         logger.info(f"Email sending disabled. Would send to {to_email}: {subject}")
         return True
     
-    if not all([SMTP_HOST, SMTP_USER, SMTP_PASSWORD]):
+    if not all([settings.SMTP_HOST, settings.SMTP_USER, settings.SMTP_PASSWORD]):
         logger.warning("Email configuration incomplete. Skipping email send.")
         return False
     
     try:
         # Create message
         msg = MIMEMultipart()
-        msg['From'] = SMTP_FROM_EMAIL
+        msg['From'] = settings.SMTP_FROM_EMAIL
         msg['To'] = to_email
         msg['Subject'] = subject
         
         msg.attach(MIMEText(body, 'plain'))
         
         # Send email
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
             server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(msg)
         
         logger.info(f"Email sent successfully to {to_email}")
