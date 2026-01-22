@@ -638,12 +638,12 @@ class TestNotificationsRealTime:
         if notifications:
             notification_id = notifications[0]["id"]
             
-            # Mark as read
+            # Mark as read - correct endpoint is /mark-read/{id}
             read_response = requests.post(
-                f"{API_URL}/notifications/{notification_id}/read",
+                f"{API_URL}/notifications/mark-read/{notification_id}",
                 headers=headers
             )
-            assert read_response.status_code == 200, f"Failed to mark as read: {read_response.text}"
+            assert read_response.status_code == 204, f"Failed to mark as read: {read_response.text}"
             print(f"Marked notification {notification_id} as read")
         else:
             print("No notifications to mark as read")
@@ -652,7 +652,8 @@ class TestNotificationsRealTime:
         """Mark all notifications as read"""
         headers = {"Authorization": f"Bearer {member_token}"}
         
-        response = requests.post(f"{API_URL}/notifications/read-all", headers=headers)
+        # Correct endpoint is /mark-all-read
+        response = requests.post(f"{API_URL}/notifications/mark-all-read", headers=headers)
         assert response.status_code == 200, f"Failed to mark all as read: {response.text}"
         print("Marked all notifications as read")
 
