@@ -149,23 +149,23 @@ const NotificationBell = () => {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className=\"absolute right-0 mt-2 w-96 bg-white border border-slate-200 rounded-lg shadow-lg z-50\" data-testid=\"notification-dropdown\">
+        <div className="absolute right-0 mt-2 w-96 bg-white border border-slate-200 rounded-lg shadow-lg z-50" data-testid="notification-dropdown">
           {/* Header */}
-          <div className=\"flex items-center justify-between p-4 border-b border-slate-200\">
-            <h3 className=\"font-heading font-semibold text-text-primary\">Notifications</h3>
-            <div className=\"flex items-center gap-2\">
+          <div className="flex items-center justify-between p-4 border-b border-slate-200">
+            <h3 className="font-heading font-semibold text-text-primary">Notifications</h3>
+            <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllRead}
-                  className=\"text-xs text-primary hover:text-primary-hover\"
-                  data-testid=\"mark-all-read-btn\"
+                  className="text-xs text-primary hover:text-primary-hover"
+                  data-testid="mark-all-read-btn"
                 >
                   Mark all read
                 </button>
               )}
               <button
                 onClick={() => setIsOpen(false)}
-                className=\"p-1 hover:bg-slate-100 rounded\"
+                className="p-1 hover:bg-slate-100 rounded"
               >
                 <X size={16} />
               </button>
@@ -173,13 +173,13 @@ const NotificationBell = () => {
           </div>
 
           {/* Notifications List */}
-          <div className=\"max-h-96 overflow-y-auto\">
+          <div className="max-h-96 overflow-y-auto">
             {loading ? (
-              <div className=\"flex items-center justify-center py-8\">
-                <div className=\"animate-spin rounded-full h-8 w-8 border-b-2 border-primary\"></div>
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : notifications.length === 0 ? (
-              <div className=\"text-center py-8 text-text-secondary\">
+              <div className="text-center py-8 text-text-secondary">
                 No notifications
               </div>
             ) : (
@@ -192,20 +192,20 @@ const NotificationBell = () => {
                   }`}
                   data-testid={`notification-${notification.id}`}
                 >
-                  <div className=\"flex items-start gap-3\">
+                  <div className="flex items-start gap-3">
                     <div className={`p-2 rounded-full ${getTypeColor(notification.type)}`}>
                       {getNotificationIcon(notification.type)}
                     </div>
-                    <div className=\"flex-1 min-w-0\">
+                    <div className="flex-1 min-w-0">
                       <p className={`text-sm ${!notification.is_read ? 'font-medium' : ''} text-text-primary`}>
                         {notification.message}
                       </p>
-                      <p className=\"text-xs text-text-secondary mt-1\">
+                      <p className="text-xs text-text-secondary mt-1">
                         {new Date(notification.created_at).toLocaleString()}
                       </p>
                     </div>
                     {!notification.is_read && (
-                      <div className=\"w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1\"></div>
+                      <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1"></div>
                     )}
                   </div>
                 </div>
