@@ -9,6 +9,8 @@ from app.models.attachment import AttachmentInDB
 from app.schemas.user import UserResponse
 from app.db.mongodb import get_database
 from app.api.deps import get_current_user
+from app.services.notification_service import create_notification
+from app.services.audit_service import log_audit
 
 router = APIRouter(prefix="/attachments", tags=["Attachments"])
 
