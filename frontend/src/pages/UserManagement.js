@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, User } from 'lucide-react';
+import { Plus, User, Edit2, Key, UserX, UserCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -10,11 +10,25 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  
   const [formData, setFormData] = useState({
     email: '',
     full_name: '',
     password: '',
     role: 'team_member'
+  });
+
+  const [editData, setEditData] = useState({
+    email: '',
+    full_name: '',
+    role: ''
+  });
+
+  const [passwordData, setPasswordData] = useState({
+    new_password: ''
   });
 
   useEffect(() => {
@@ -43,6 +57,70 @@ const UserManagement = () => {
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to create user');
     }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.patch(`${API}/users/${selectedUser.id}`, editData);
+      toast.success('User updated successfully');
+      setShowEditModal(false);
+      setSelectedUser(null);
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update user');
+    }
+  };
+
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/users/${selectedUser.id}/reset-password`, passwordData);
+      toast.success('Password reset successfully');
+      setShowPasswordModal(false);
+      setSelectedUser(null);
+      setPasswordData({ new_password: '' });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to reset password');
+    }
+  };
+
+  const handleDeactivate = async (user) => {
+    if (!window.confirm(`Are you sure you want to deactivate ${user.full_name}?`)) return;
+    
+    try {
+      await axios.post(`${API}/users/${user.id}/deactivate`);
+      toast.success('User deactivated successfully');
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to deactivate user');
+    }
+  };
+
+  const handleActivate = async (user) => {
+    try {
+      await axios.post(`${API}/users/${user.id}/activate`);
+      toast.success('User activated successfully');
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to activate user');
+    }
+  };
+
+  const openEditModal = (user) => {
+    setSelectedUser(user);
+    setEditData({
+      email: user.email,
+      full_name: user.full_name,
+      role: user.role
+    });
+    setShowEditModal(true);
+  };
+
+  const openPasswordModal = (user) => {
+    setSelectedUser(user);
+    setPasswordData({ new_password: '' });
+    setShowPasswordModal(true);
   };
 
   const getRoleBadge = (role) => {
@@ -80,7 +158,7 @@ const UserManagement = () => {
         </button>
       </div>
 
-      {/* Users List */}
+      {/* Users Table */}
       <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -89,7 +167,8 @@ const UserManagement = () => {
                 <th className="text-left px-6 py-4 text-sm font-semibold text-text-primary">Name</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-text-primary">Email</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-text-primary">Role</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-text-primary">Created At</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-text-primary">Status</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-text-primary">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -109,8 +188,55 @@ const UserManagement = () => {
                       {user.role.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-text-secondary">
-                    {new Date(user.created_at).toLocaleDateString()}
+                  <td className="px-6 py-4">
+                    {user.is_active ? (
+                      <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 border-green-200">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 border-red-200">
+                        Inactive
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openEditModal(user)}
+                        className="p-2 hover:bg-blue-50 rounded-md transition-colors"
+                        title="Edit User"
+                        data-testid={`edit-btn-${user.id}`}
+                      >
+                        <Edit2 size={16} className="text-blue-600" />
+                      </button>
+                      <button
+                        onClick={() => openPasswordModal(user)}
+                        className="p-2 hover:bg-yellow-50 rounded-md transition-colors"
+                        title="Reset Password"
+                        data-testid={`password-btn-${user.id}`}
+                      >
+                        <Key size={16} className="text-yellow-600" />
+                      </button>
+                      {user.is_active ? (
+                        <button
+                          onClick={() => handleDeactivate(user)}
+                          className="p-2 hover:bg-red-50 rounded-md transition-colors"
+                          title="Deactivate User"
+                          data-testid={`deactivate-btn-${user.id}`}
+                        >
+                          <UserX size={16} className="text-red-600" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleActivate(user)}
+                          className="p-2 hover:bg-green-50 rounded-md transition-colors"
+                          title="Activate User"
+                          data-testid={`activate-btn-${user.id}`}
+                        >
+                          <UserCheck size={16} className="text-green-600" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -186,6 +312,103 @@ const UserManagement = () => {
                   data-testid="submit-user-btn"
                 >
                   Create User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-2xl font-heading font-semibold text-text-primary mb-6">Edit User</h3>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={editData.full_name}
+                  onChange={(e) => setEditData({ ...editData, full_name: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">Email</label>
+                <input
+                  type="email"
+                  value={editData.email}
+                  onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">Role</label>
+                <select
+                  value={editData.role}
+                  onChange={(e) => setEditData({ ...editData, role: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="team_member">Team Member</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowEditModal(false); setSelectedUser(null); }}
+                  className="flex-1 px-4 py-2 border border-slate-200 text-text-primary rounded-md hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-md transition-all active:scale-95"
+                >
+                  Update User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Password Reset Modal */}
+      {showPasswordModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-2xl font-heading font-semibold text-text-primary mb-6">Reset Password</h3>
+            <p className="text-text-secondary mb-4">Reset password for: <strong>{selectedUser.full_name}</strong></p>
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">New Password</label>
+                <input
+                  type="password"
+                  value={passwordData.new_password}
+                  onChange={(e) => setPasswordData({ new_password: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                  minLength="6"
+                  placeholder="Enter new password"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowPasswordModal(false); setSelectedUser(null); }}
+                  className="flex-1 px-4 py-2 border border-slate-200 text-text-primary rounded-md hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-md transition-all active:scale-95"
+                >
+                  Reset Password
                 </button>
               </div>
             </form>
