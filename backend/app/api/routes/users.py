@@ -79,6 +79,44 @@ async def create_user(
         updated_at=user_in_db.updated_at
     )
 
+@router.get("/assignable", response_model=List[UserResponse])
+async def list_assignable_users(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    List users available for task assignment
+    - Team members see only managers and other team members (not admins)
+    - Admins and managers see all users
+    """
+    db = get_database()
+    
+    if current_user.role == "team_member":
+        # Team members can only see managers and team members
+        users = await db.users.find(
+            {"role": {"$in": ["manager", "team_member"]}, "is_active": True},
+            {"_id": 0, "hashed_password": 0}
+        ).to_list(1000)
+    else:
+        # Admins and managers see all active users
+        users = await db.users.find(
+            {"is_active": True},
+            {"_id": 0, "hashed_password": 0}
+        ).to_list(1000)
+    
+    # Convert datetime strings
+    for user in users:
+        if isinstance(user.get('created_at'), str):
+            user['created_at'] = datetime.fromisoformat(user['created_at'])
+        elif 'created_at' not in user:
+            user['created_at'] = datetime.now(timezone.utc)
+        
+        if isinstance(user.get('updated_at'), str):
+            user['updated_at'] = datetime.fromisoformat(user['updated_at'])
+        elif 'updated_at' not in user:
+            user['updated_at'] = datetime.now(timezone.utc)
+    
+    return [UserResponse(**user) for user in users]
+
 @router.get("", response_model=List[UserResponse])
 async def list_users(
     current_user: UserResponse = Depends(require_role(["admin", "manager"]))
