@@ -5,6 +5,9 @@ from app.models.comment import CommentInDB
 from app.schemas.user import UserResponse
 from app.db.mongodb import get_database
 from app.api.deps import get_current_user
+from app.services.notification_service import create_notification
+from app.services.audit_service import log_audit
+from app.services.email_service import send_comment_notification_email
 import uuid
 from datetime import datetime, timezone
 
