@@ -126,13 +126,19 @@ async def get_stats(current_user = Depends(get_current_user)):
     Get task statistics
     - Team members see their own stats
     - Admins and Managers see all stats
+    - Excludes cancelled tasks from counts
     """
     db = get_database()
     
     if current_user.role == "team_member":
-        tasks = await db.tasks.find({"assigned_to": current_user.id}, {"_id": 0}).to_list(1000)
+        tasks = await db.tasks.find({
+            "assigned_to": current_user.id,
+            "status": {"$ne": "cancelled"}
+        }, {"_id": 0}).to_list(1000)
     else:
-        tasks = await db.tasks.find({}, {"_id": 0}).to_list(1000)
+        tasks = await db.tasks.find({
+            "status": {"$ne": "cancelled"}
+        }, {"_id": 0}).to_list(1000)
     
     total_tasks = len(tasks)
     todo = len([t for t in tasks if t["status"] == "todo"])
