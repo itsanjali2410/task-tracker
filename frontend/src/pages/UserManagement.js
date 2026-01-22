@@ -359,9 +359,9 @@ const UserManagement = () => {
                   onChange={(e) => setEditData({ ...editData, role: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <option value="team_member">Team Member</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Admin</option>
+                  {availableRoles.map((role) => (
+                    <option key={role.value} value={role.value}>{role.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="flex gap-3 pt-4">
