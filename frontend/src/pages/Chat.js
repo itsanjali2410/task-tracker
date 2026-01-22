@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
-import { Send, Plus, Users, User, Paperclip, Download, Check, CheckCheck, X } from 'lucide-react';
+import { Send, Plus, Users, User, Paperclip, Download, Check, CheckCheck, X, Pin, Search, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -24,6 +24,15 @@ const Chat = () => {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [groupName, setGroupName] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
+  
+  // Search and pin state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState([]);
+  const [showPinnedMessages, setShowPinnedMessages] = useState(false);
+  const [messageMenuId, setMessageMenuId] = useState(null);
   
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
