@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, CheckSquare, Users, LogOut, Menu, X, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Users, LogOut, Menu, X, TrendingUp, Shield } from 'lucide-react';
 import { useState } from 'react';
 import NotificationBell from './NotificationBell';
 
