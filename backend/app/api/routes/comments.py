@@ -57,6 +57,42 @@ async def create_comment(
     
     await db.comments.insert_one(comment_dict)
     
+    # Notify task participants (assigned user and creator)
+    participants = set([task["assigned_to"], task["created_by"]])
+    participants.discard(current_user.id)  # Don't notify the commenter
+    
+    for participant_id in participants:
+        await create_notification(
+            user_id=participant_id,
+            notification_type="comment_added",
+            message=f"{current_user.full_name} commented on task: '{task['title']}'",
+            related_task_id=comment_data.task_id
+        )
+        
+        # Send email notification
+        user = await db.users.find_one({"id": participant_id}, {"_id": 0})
+        if user:
+            send_comment_notification_email(
+                to_email=user["email"],
+                to_name=user["full_name"],
+                task_title=task["title"],
+                commenter_name=current_user.full_name,
+                comment_preview=comment_data.content
+            )
+    
+    # Log audit
+    await log_audit(
+        action_type="comment_added",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=comment_data.task_id,
+        metadata={
+            "task_title": task["title"],
+            "comment_length": len(comment_data.content)
+        }
+    )
+    
     return CommentResponse(**comment_in_db.model_dump())
 
 @router.get("/task/{task_id}", response_model=List[CommentResponse])
