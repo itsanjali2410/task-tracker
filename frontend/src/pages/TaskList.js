@@ -29,7 +29,7 @@ const TaskList = () => {
     try {
       const [tasksRes, usersRes] = await Promise.all([
         axios.get(`${API}/tasks`),
-        axios.get(`${API}/users`)
+        axios.get(`${API}/users/assignable`)
       ]);
       setTasks(tasksRes.data);
       setUsers(usersRes.data);
