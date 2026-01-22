@@ -5,6 +5,7 @@ from app.models.user import UserInDB
 from app.core.security import get_password_hash
 from app.db.mongodb import get_database
 from app.api.deps import get_current_user, require_role
+from app.services.audit_service import log_audit
 import uuid
 from datetime import datetime, timezone
 
@@ -54,6 +55,18 @@ async def create_user(
     user_dict["updated_at"] = user_dict["updated_at"].isoformat()
     
     await db.users.insert_one(user_dict)
+    
+    # Log audit
+    await log_audit(
+        action_type="user_created",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        metadata={
+            "new_user_email": user_data.email,
+            "new_user_role": user_data.role
+        }
+    )
     
     # Return response without password
     return UserResponse(
