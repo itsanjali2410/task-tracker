@@ -15,6 +15,10 @@ import AuditLogs from './pages/AuditLogs';
 import Chat from './pages/Chat';
 import './App.css';
 
+// Role constants - must match backend
+const ALL_STAFF_ROLES = ['admin', 'manager', 'team_member', 'sales', 'operations', 'marketing', 'accounts'];
+const MANAGER_ROLES = ['admin', 'manager'];
+
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
 
@@ -60,7 +64,7 @@ function AppRoutes() {
       <Route
         path="/tasks"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'team_member']}>
+          <ProtectedRoute allowedRoles={ALL_STAFF_ROLES}>
             <TaskList />
           </ProtectedRoute>
         }
@@ -84,7 +88,7 @@ function AppRoutes() {
       <Route
         path="/reports"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+          <ProtectedRoute allowedRoles={MANAGER_ROLES}>
             <Reports />
           </ProtectedRoute>
         }
@@ -92,7 +96,7 @@ function AppRoutes() {
       <Route
         path="/audit-logs"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+          <ProtectedRoute allowedRoles={MANAGER_ROLES}>
             <AuditLogs />
           </ProtectedRoute>
         }
@@ -100,7 +104,7 @@ function AppRoutes() {
       <Route
         path="/chat"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={ALL_STAFF_ROLES}>
             <Chat />
           </ProtectedRoute>
         }
