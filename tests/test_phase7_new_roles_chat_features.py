@@ -190,7 +190,7 @@ class TestNewRolesAccessRestrictions:
     def test_sales_cannot_access_reports(self, sales_token):
         """Sales role cannot access reports"""
         headers = {"Authorization": f"Bearer {sales_token}"}
-        response = requests.get(f"{API_URL}/reports/summary", headers=headers)
+        response = requests.get(f"{API_URL}/reports/user-productivity", headers=headers)
         # Should be 403 Forbidden
         assert response.status_code == 403, f"Expected 403, got {response.status_code}: {response.text}"
         print("Sales correctly denied access to reports (403)")
@@ -648,7 +648,7 @@ class TestExistingRolesUnchanged:
     def test_admin_can_access_reports(self, admin_token):
         """Admin can still access reports"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        response = requests.get(f"{API_URL}/reports/summary", headers=headers)
+        response = requests.get(f"{API_URL}/reports/user-productivity", headers=headers)
         assert response.status_code == 200, f"Admin cannot access reports: {response.text}"
         print("Admin can access reports")
     
@@ -662,7 +662,7 @@ class TestExistingRolesUnchanged:
     def test_manager_can_access_reports(self, manager_token):
         """Manager can still access reports"""
         headers = {"Authorization": f"Bearer {manager_token}"}
-        response = requests.get(f"{API_URL}/reports/summary", headers=headers)
+        response = requests.get(f"{API_URL}/reports/user-productivity", headers=headers)
         assert response.status_code == 200, f"Manager cannot access reports: {response.text}"
         print("Manager can access reports")
     
