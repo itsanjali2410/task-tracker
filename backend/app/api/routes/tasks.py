@@ -5,6 +5,7 @@ from app.models.task import TaskInDB
 from app.schemas.user import UserResponse
 from app.db.mongodb import get_database
 from app.api.deps import get_current_user, require_role
+from app.core.roles import NON_ADMIN_ROLES, MANAGER_ROLES
 from app.services.notification_service import create_notification
 from app.services.audit_service import log_audit
 from app.services.email_service import send_task_assigned_email
@@ -20,7 +21,7 @@ async def create_task(
 ):
     """
     Create a new task (All authenticated users)
-    - Team members can assign to other members and managers (not admins)
+    - Non-admin roles can assign to everyone except admins
     - Admins and Managers can assign to anyone
     - Validates assigned user exists
     - Creates task in MongoDB
@@ -35,11 +36,11 @@ async def create_task(
             detail="Assigned user not found"
         )
     
-    # Team members can only assign to members and managers, not admins
-    if current_user.role == "team_member" and assigned_user.get("role") == "admin":
+    # Non-admin roles cannot assign tasks to admins
+    if current_user.role in NON_ADMIN_ROLES and assigned_user.get("role") == "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Team members cannot assign tasks to admins"
+            detail="You cannot assign tasks to admins"
         )
     
     # Validate priority
