@@ -1,12 +1,13 @@
 """
 Chat API Routes - Direct Messages and Group Chats
+With pinning and search features
 """
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Query
 from typing import List, Optional
 from app.schemas.chat import (
     ConversationCreate, ConversationResponse, ConversationUpdate,
     MessageCreate, MessageResponse, ChatAttachmentResponse,
-    TypingIndicator, ReadReceipt
+    TypingIndicator, ReadReceipt, PinConversation, PinMessage, MessageSearchResponse
 )
 from app.models.chat import ConversationInDB, MessageInDB, ChatAttachmentInDB
 from app.schemas.user import UserResponse
@@ -16,6 +17,7 @@ from app.services.websocket_manager import manager
 import uuid
 import os
 import aiofiles
+import re
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
