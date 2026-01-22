@@ -425,7 +425,8 @@ class TestChatMessages:
         """Send typing indicator"""
         headers = {"Authorization": f"Bearer {admin_token}"}
         
-        typing_data = {"is_typing": True}
+        # Typing indicator requires conversation_id in body
+        typing_data = {"conversation_id": conversation_id, "is_typing": True}
         response = requests.post(
             f"{API_URL}/chat/conversations/{conversation_id}/typing",
             json=typing_data,
@@ -435,7 +436,7 @@ class TestChatMessages:
         print("Typing indicator sent successfully")
         
         # Stop typing
-        typing_data = {"is_typing": False}
+        typing_data = {"conversation_id": conversation_id, "is_typing": False}
         response = requests.post(
             f"{API_URL}/chat/conversations/{conversation_id}/typing",
             json=typing_data,
