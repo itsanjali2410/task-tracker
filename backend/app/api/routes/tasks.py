@@ -16,10 +16,12 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 @router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(
     task_data: TaskCreate,
-    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+    current_user: UserResponse = Depends(get_current_user)
 ):
     """
-    Create a new task (Admin and Manager only)
+    Create a new task (All authenticated users)
+    - Team members can assign to other members and managers (not admins)
+    - Admins and Managers can assign to anyone
     - Validates assigned user exists
     - Creates task in MongoDB
     """
@@ -31,6 +33,13 @@ async def create_task(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assigned user not found"
+        )
+    
+    # Team members can only assign to members and managers, not admins
+    if current_user.role == "team_member" and assigned_user.get("role") == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Team members cannot assign tasks to admins"
         )
     
     # Validate priority
