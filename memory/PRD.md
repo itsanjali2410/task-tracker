@@ -1,9 +1,9 @@
 # TripStars Task Management System - Product Requirements Document
 
 ## Overview
-TripStars is an internal Task Management System for a travel company, built to manage tasks, assignments, reporting, and collaboration across teams.
+TripStars is an internal Task Management System for a travel company, built to manage tasks, assignments, reporting, collaboration, and real-time communication across teams.
 
-**Tech Stack**: FastAPI (Python) + React + MongoDB
+**Tech Stack**: FastAPI (Python) + React + MongoDB + WebSocket
 
 ---
 
@@ -14,65 +14,66 @@ TripStars is an internal Task Management System for a travel company, built to m
 - User management (CRUD)
 - Task management for all users
 - View all reports and audit logs
-- System configuration
+- Cannot deactivate own account
 
 ### Manager  
 - Task management (create, assign, update)
 - View all tasks and reports
 - Cannot manage users
 - Can cancel tasks
+- Create group chats
 
 ### Team Member
-- View and update assigned tasks only
+- View and update assigned tasks
+- **Can now create and assign tasks** to other members and managers (NOT admins)
 - Add comments and attachments
-- Cannot create/assign tasks
-- Cannot access user management
+- Access to All Tasks page
+- Chat with all users
+- Create group chats
 
 ---
 
 ## Core Features
 
-### Phase 1: Foundation (COMPLETE)
-- [x] User authentication with JWT
-- [x] Role-based access control (Admin, Manager, Team Member)
-- [x] Basic task CRUD operations
-- [x] MongoDB database integration
+### Phase 1-4: Foundation, Collaboration, Reporting, Notifications (COMPLETE)
+- User authentication with JWT + Refresh tokens
+- Role-based access control
+- Task CRUD operations with comments and attachments
+- Productivity reports and dashboards
+- In-app and email notifications
+- Background scheduler for overdue tasks
+- Audit logging
 
-### Phase 2: Collaboration (COMPLETE)
-- [x] Comments system on tasks
-- [x] Modular backend architecture
-- [x] Task status workflow (todo → in_progress → completed)
+### Phase 5: Production Hardening (COMPLETE)
+- User Management CRUD frontend for admins
+- Task assignment with user dropdown
+- Notification sound with toggle
+- Cancelled task status + delete prevention
+- Enhanced audit logging
 
-### Phase 3: Attachments & Reporting (COMPLETE)
-- [x] File attachments on tasks
-- [x] Productivity reports dashboard
-- [x] User task statistics
+### Phase 6: Chat & Task Assignment Updates (COMPLETE - Jan 22, 2026)
+- **Team Member Task Assignment**
+  - Team members can create tasks
+  - Can assign to managers and other team members
+  - Cannot assign to admins (403 error)
+  - New `/api/users/assignable` endpoint
 
-### Phase 4: Notifications & Automation (COMPLETE)
-- [x] In-app notifications
-- [x] Email notifications (task assignments, due dates)
-- [x] Background scheduler for overdue task checks
-- [x] Audit logging for important actions
+- **Admin Self-Delete Prevention**
+  - Admin cannot deactivate own account (400 error)
 
-### Phase 5: Production Hardening (COMPLETE - Jan 22, 2026)
-- [x] **User Management Frontend** - Full CRUD UI for admins
-  - Create, edit, reset password, activate/deactivate users
-  - Navigation link and route integrated
-- [x] **Task Assignment UX** - User dropdown instead of roles
-  - Fetches actual users from /api/users
-  - Shows name and email for identification
-- [x] **Notification Sound System**
-  - Audio notification on new notifications
-  - Toggle button to enable/disable
-  - Persists preference in localStorage
-- [x] **Cancelled Task Status**
-  - New "cancelled" status in task lifecycle
-  - Task deletion disabled (returns 405)
-  - Dedicated cancel endpoint
-- [x] **Enhanced Audit Logging**
-  - Task reassignment logging with old/new assignee
-  - User lifecycle events (create, update, deactivate, activate)
-- [x] **Access/Refresh Tokens** - Production-grade auth
+- **Real-time WebSocket Notifications**
+  - WebSocket endpoint: `/api/ws?token=<access_token>`
+  - Notifications pushed in real-time after saving to MongoDB
+  - Sound plays on new notifications
+  - Local cache prevents duplicate notifications
+
+- **Chat System (Full Feature)**
+  - Direct Messages (1-on-1)
+  - Group Chats (everyone can create)
+  - File attachments (PDF, JPG, PNG, DOC, DOCX - 10MB max)
+  - Read receipts (✓ delivered, ✓✓ read)
+  - Typing indicators
+  - Real-time message delivery via WebSocket
 
 ---
 
@@ -86,45 +87,49 @@ TripStars is an internal Task Management System for a travel company, built to m
 | `/api/auth/logout` | POST | Logout and revoke tokens |
 | `/api/auth/me` | GET | Get current user |
 
-### Users (Admin/Manager read, Admin write)
+### Users
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/users` | GET | List all users |
+| `/api/users/assignable` | GET | Get users assignable for tasks (role-filtered) |
+| `/api/users` | GET | List all users (Admin/Manager) |
 | `/api/users` | POST | Create user (Admin) |
 | `/api/users/{id}` | GET | Get user by ID |
 | `/api/users/{id}` | PATCH | Update user (Admin) |
-| `/api/users/{id}/reset-password` | POST | Reset password (Admin) |
-| `/api/users/{id}/deactivate` | POST | Deactivate user (Admin) |
+| `/api/users/{id}/deactivate` | POST | Deactivate user (Admin, cannot self) |
 | `/api/users/{id}/activate` | POST | Activate user (Admin) |
 
 ### Tasks
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/tasks` | GET | List tasks (filtered by role) |
-| `/api/tasks` | POST | Create task |
+| `/api/tasks` | GET | List tasks |
+| `/api/tasks` | POST | Create task (all users) |
 | `/api/tasks/{id}` | GET | Get task details |
 | `/api/tasks/{id}` | PATCH | Update task |
 | `/api/tasks/{id}` | DELETE | **DISABLED** (returns 405) |
 | `/api/tasks/{id}/cancel` | PATCH | Cancel task |
 
-### Comments & Attachments
+### Chat
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/comments` | POST | Add comment |
-| `/api/comments/task/{id}` | GET | Get task comments |
-| `/api/attachments` | POST | Upload attachment |
-| `/api/attachments/task/{id}` | GET | Get task attachments |
-| `/api/attachments/{id}/download` | GET | Download attachment |
+| `/api/chat/conversations` | GET | List user's conversations |
+| `/api/chat/conversations` | POST | Create DM or Group |
+| `/api/chat/conversations/{id}` | GET | Get conversation details |
+| `/api/chat/conversations/{id}` | PATCH | Update group (add/remove members) |
+| `/api/chat/conversations/{id}/messages` | GET | Get messages |
+| `/api/chat/conversations/{id}/messages` | POST | Send message |
+| `/api/chat/conversations/{id}/read` | POST | Mark messages read |
+| `/api/chat/conversations/{id}/typing` | POST | Send typing indicator |
+| `/api/chat/conversations/{id}/attachments` | POST | Upload attachment |
+| `/api/chat/attachments/{id}/download` | GET | Download attachment |
+| `/api/chat/users/available` | GET | Get users for chat |
 
-### Reports & Notifications
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/reports/user-productivity` | GET | Get productivity stats |
-| `/api/notifications` | GET | Get user notifications |
-| `/api/notifications/unread-count` | GET | Get unread count |
-| `/api/notifications/mark-read/{id}` | POST | Mark notification read |
-| `/api/notifications/mark-all-read` | POST | Mark all read |
-| `/api/audit-logs` | GET | Get audit logs (Admin/Manager) |
+### WebSocket
+| Endpoint | Description |
+|----------|-------------|
+| `/api/ws?token=<token>` | Real-time connection for notifications & chat |
+
+### Other Endpoints
+- Comments, Attachments, Reports, Notifications, Audit Logs (see Phase 1-5)
 
 ---
 
@@ -133,10 +138,13 @@ TripStars is an internal Task Management System for a travel company, built to m
 - `users` - User accounts and roles
 - `tasks` - Task data with assignments
 - `comments` - Task comments
-- `attachments` - File attachment metadata
+- `attachments` - Task file attachments
 - `notifications` - User notifications
 - `audit_logs` - Action audit trail
 - `refresh_tokens` - Token storage for auth
+- `conversations` - Chat conversations (DM + Groups)
+- `messages` - Chat messages
+- `chat_attachments` - Chat file attachments
 
 ---
 
@@ -156,42 +164,21 @@ TripStars is an internal Task Management System for a travel company, built to m
 /app/
 ├── backend/
 │   ├── app/
-│   │   ├── api/
-│   │   │   ├── deps.py
-│   │   │   └── routes/ (auth, tasks, users, comments, attachments, reports, notifications, audit_logs)
+│   │   ├── api/routes/ (auth, tasks, users, chat, websocket, etc.)
 │   │   ├── core/ (config, security)
-│   │   ├── db/ (mongodb)
-│   │   ├── models/
-│   │   ├── schemas/
-│   │   └── services/ (email, scheduler, audit, notification)
-│   ├── tests/
-│   └── requirements.txt
+│   │   ├── models/ (user, task, chat)
+│   │   ├── schemas/ (user, task, chat)
+│   │   ├── services/ (email, scheduler, notification, websocket_manager)
+│   │   └── db/
+│   ├── uploads/chat/ (chat attachments)
+│   └── tests/
 └── frontend/
     ├── src/
     │   ├── components/ (Layout, NotificationBell)
-    │   ├── contexts/ (AuthContext)
-    │   └── pages/ (Dashboard, TaskList, TaskDetail, UserManagement, Reports, AuditLogs)
+    │   ├── contexts/ (AuthContext, WebSocketContext)
+    │   └── pages/ (Dashboard, TaskList, Chat, UserManagement, etc.)
     └── package.json
 ```
-
----
-
-## Prioritized Backlog
-
-### P0 (Must Have) - COMPLETE
-All core features implemented
-
-### P1 (Should Have) - Future Enhancements
-- [ ] Task search and filtering
-- [ ] Bulk task operations
-- [ ] Task dependencies
-- [ ] Export reports to PDF/CSV
-
-### P2 (Nice to Have)
-- [ ] Dark mode theme
-- [ ] Mobile-responsive improvements
-- [ ] Task templates
-- [ ] Integration with calendar apps
 
 ---
 
@@ -199,27 +186,41 @@ All core features implemented
 
 | Phase | Backend | Frontend | Status |
 |-------|---------|----------|--------|
-| Phase 1 | ✅ | ✅ | Complete |
-| Phase 2 | ✅ | ✅ | Complete |
-| Phase 3 | ✅ | ✅ | Complete |
-| Phase 4 | ✅ | ✅ | Complete |
-| Phase 5 | ✅ (23/23 tests) | ✅ | Complete |
+| Phase 1-4 | ✅ | ✅ | Complete |
+| Phase 5 | ✅ (23 tests) | ✅ | Complete |
+| Phase 6 | ✅ (27 tests) | ✅ | Complete |
+
+**Total: 50+ automated tests**
 
 ---
 
 ## Changelog
 
-### January 22, 2026 - Phase 5 Complete
-- Added User Management CRUD frontend for admins
-- Implemented task assignment with user dropdown
-- Added notification sound with toggle
-- Disabled task deletion (returns 405)
-- Added cancelled task status
-- Enhanced audit logging for reassignments
-- Created comprehensive test suite (23 tests)
+### January 22, 2026 - Phase 6 Complete
+- Team members can now create tasks and assign to managers/members
+- Admin cannot deactivate own account
+- Real-time WebSocket notifications
+- Full chat system with DM, Groups, Attachments, Read Receipts, Typing Indicators
+- 27 new backend tests (100% pass rate)
 
 ### Previous Phases
+- Phase 5: User Management, Notification Sound, Cancelled Status
 - Phase 4: Notifications, scheduler, audit logs
 - Phase 3: Attachments, reports, dashboard
 - Phase 2: Comments, modular architecture
 - Phase 1: Auth, tasks, users foundation
+
+---
+
+## Prioritized Backlog
+
+### P1 (Should Have)
+- [ ] Task search and filtering
+- [ ] Bulk task operations
+- [ ] Export reports to PDF/CSV
+
+### P2 (Nice to Have)
+- [ ] Dark mode theme
+- [ ] Task dependencies
+- [ ] Integration with calendar apps
+- [ ] Push notifications (mobile)
