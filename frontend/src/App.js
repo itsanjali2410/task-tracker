@@ -87,6 +87,14 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/audit-logs"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+            <AuditLogs />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/" element={<Navigate to="/dashboard" />} />
     </Routes>
   );
