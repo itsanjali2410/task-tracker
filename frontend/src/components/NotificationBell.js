@@ -132,12 +132,12 @@ const NotificationBell = () => {
   };
 
   return (
-    <div className=\"relative\" ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef}>
       {/* Bell Icon */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className=\"relative p-2 hover:bg-slate-100 rounded-full transition-colors\"
-        data-testid=\"notification-bell\"
+        className="relative p-2 hover:bg-slate-100 rounded-full transition-colors"
+        data-testid="notification-bell"
       >
         <Bell size={20} className=\"text-text-primary\" />
         {unreadCount > 0 && (
