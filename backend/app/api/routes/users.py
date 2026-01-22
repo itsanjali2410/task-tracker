@@ -3,7 +3,7 @@ from typing import List
 from app.schemas.user import UserCreate, UserResponse, UserUpdate, PasswordReset
 from app.models.user import UserInDB
 from app.core.security import get_password_hash
-from app.core.roles import VALID_ROLES, USER_MANAGEMENT_ROLES, STAFF_ROLES, NON_ADMIN_ROLES
+from app.core.roles import VALID_ROLES, USER_MANAGEMENT_ROLES, STAFF_ROLES, NON_ADMIN_ROLES, MANAGER_ROLES
 from app.db.mongodb import get_database
 from app.api.deps import get_current_user, require_role
 from app.services.audit_service import log_audit
