@@ -42,10 +42,12 @@ async def startup_event():
     """Connect to MongoDB and seed initial data"""
     await connect_to_mongo()
     await seed_initial_data()
+    start_scheduler()  # Start background scheduler
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Close MongoDB connection"""
+    """Close MongoDB connection and stop scheduler"""
+    shutdown_scheduler()  # Stop background scheduler
     await close_mongo_connection()
 
 # Seed initial users
