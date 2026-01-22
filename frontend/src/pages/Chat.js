@@ -396,13 +396,12 @@ const Chat = () => {
             conversations.map(conv => (
               <div
                 key={conv.id}
-                onClick={() => selectConversation(conv)}
                 className={`p-4 border-b border-slate-100 cursor-pointer transition-colors ${
                   selectedConv?.id === conv.id ? 'bg-primary/10' : 'hover:bg-slate-50'
                 }`}
                 data-testid={`conv-${conv.id}`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3" onClick={() => selectConversation(conv)}>
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     conv.is_group ? 'bg-purple-100' : 'bg-primary/20'
                   }`}>
@@ -416,14 +415,26 @@ const Chat = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-text-primary truncate">
-                        {getConversationName(conv)}
-                      </span>
-                      {conv.unread_count > 0 && (
-                        <span className="bg-primary text-white text-xs rounded-full px-2 py-0.5">
-                          {conv.unread_count}
+                      <div className="flex items-center gap-1">
+                        {conv.is_pinned && <Pin size={12} className="text-primary" />}
+                        <span className="font-medium text-text-primary truncate">
+                          {getConversationName(conv)}
                         </span>
-                      )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {conv.unread_count > 0 && (
+                          <span className="bg-primary text-white text-xs rounded-full px-2 py-0.5">
+                            {conv.unread_count}
+                          </span>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); pinConversation(conv.id, !conv.is_pinned); }}
+                          className={`p-1 rounded hover:bg-slate-200 ${conv.is_pinned ? 'text-primary' : 'text-slate-400'}`}
+                          title={conv.is_pinned ? 'Unpin' : 'Pin'}
+                        >
+                          <Pin size={14} />
+                        </button>
+                      </div>
                     </div>
                     {conv.last_message && (
                       <p className="text-sm text-text-secondary truncate">{conv.last_message}</p>
