@@ -101,6 +101,32 @@ async def upload_attachment(
     
     await db.attachments.insert_one(attachment_dict)
     
+    # Notify task participants (assigned user and creator)
+    participants = set([task["assigned_to"], task["created_by"]])
+    participants.discard(current_user.id)  # Don't notify the uploader
+    
+    for participant_id in participants:
+        await create_notification(
+            user_id=participant_id,
+            notification_type="file_uploaded",
+            message=f"{current_user.full_name} uploaded a file to task: '{task['title']}'",
+            related_task_id=task_id
+        )
+    
+    # Log audit
+    await log_audit(
+        action_type="file_uploaded",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=task_id,
+        metadata={
+            "task_title": task["title"],
+            "file_name": file.filename,
+            "file_size": file_size
+        }
+    )
+    
     return AttachmentResponse(**attachment.model_dump())
 
 @router.get("/task/{task_id}", response_model=List[AttachmentResponse])
