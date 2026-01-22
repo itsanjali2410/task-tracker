@@ -1187,6 +1187,10 @@ def main():
         ("Productivity Score Calculation", tester.test_productivity_score_calculation),
         ("Stats Endpoint", tester.test_stats_endpoint),
         ("Role-based Access", tester.test_role_based_access),
+        ("Notifications API", tester.test_notifications_api),
+        ("Audit Logs API", tester.test_audit_logs_api),
+        ("Notification Triggers", tester.test_notification_triggers),
+        ("Audit Log Creation", tester.test_audit_log_creation),
     ]
     
     failed_tests = []
