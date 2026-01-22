@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.mongodb import connect_to_mongo, close_mongo_connection, get_database
-from app.api.routes import auth, users, tasks, comments, attachments, reports, notifications, audit_logs
+from app.api.routes import auth, users, tasks, comments, attachments, reports, notifications, audit_logs, chat, websocket
 from app.api.deps import get_current_user
 from app.core.security import get_password_hash
 from app.services.scheduler import start_scheduler, shutdown_scheduler
@@ -109,6 +109,8 @@ app.include_router(attachments.router, prefix=api_prefix)
 app.include_router(reports.router, prefix=api_prefix)
 app.include_router(notifications.router, prefix=api_prefix)
 app.include_router(audit_logs.router, prefix=api_prefix)
+app.include_router(chat.router, prefix=api_prefix)
+app.include_router(websocket.router, prefix=api_prefix)
 
 # Health check and stats endpoints
 @app.get("/api/health")
