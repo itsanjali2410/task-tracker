@@ -211,6 +211,14 @@ const NotificationBell = () => {
           <div className="flex items-center justify-between p-4 border-b border-slate-200">
             <h3 className="font-heading font-semibold text-text-primary">Notifications</h3>
             <div className="flex items-center gap-2">
+              <button
+                onClick={toggleSound}
+                className={`p-1.5 rounded transition-colors ${soundEnabled ? 'hover:bg-slate-100 text-primary' : 'hover:bg-slate-100 text-slate-400'}`}
+                title={soundEnabled ? 'Disable notification sound' : 'Enable notification sound'}
+                data-testid="toggle-sound-btn"
+              >
+                {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              </button>
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllRead}
