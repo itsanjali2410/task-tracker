@@ -6,7 +6,7 @@ import os
 import tempfile
 
 class TripStarsAPITester:
-    def __init__(self, base_url="https://tripstars-tracker.preview.emergentagent.com"):
+    def __init__(self, base_url="https://tripstars-tasks.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tokens = {}
