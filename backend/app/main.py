@@ -107,6 +107,8 @@ app.include_router(tasks.router, prefix=api_prefix)
 app.include_router(comments.router, prefix=api_prefix)
 app.include_router(attachments.router, prefix=api_prefix)
 app.include_router(reports.router, prefix=api_prefix)
+app.include_router(notifications.router, prefix=api_prefix)
+app.include_router(audit_logs.router, prefix=api_prefix)
 
 # Health check and stats endpoints
 @app.get("/api/health")
