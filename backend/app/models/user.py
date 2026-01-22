@@ -8,7 +8,7 @@ class UserInDB(BaseModel):
     email: EmailStr
     full_name: str
     hashed_password: str
-    role: str  # 'admin', 'manager', 'team_member'
+    role: str  # 'admin', 'manager', 'team_member', 'sales', 'operations', 'marketing', 'accounts'
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
