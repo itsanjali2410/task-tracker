@@ -214,7 +214,7 @@ async def update_user(
 @router.post("/{user_id}/reset-password")
 async def reset_user_password(
     user_id: str,
-    new_password: str,
+    password_data: PasswordReset,
     current_user: UserResponse = Depends(require_role(["admin"]))
 ):
     """
@@ -232,7 +232,7 @@ async def reset_user_password(
         )
     
     # Hash new password
-    hashed_password = get_password_hash(new_password)
+    hashed_password = get_password_hash(password_data.new_password)
     
     await db.users.update_one(
         {"id": user_id},
