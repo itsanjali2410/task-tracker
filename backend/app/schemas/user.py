@@ -19,6 +19,9 @@ class UserUpdate(BaseModel):
 class PasswordReset(BaseModel):
     new_password: str
 
+class PasswordReset(BaseModel):
+    new_password: str
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
