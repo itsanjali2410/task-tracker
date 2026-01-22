@@ -25,6 +25,7 @@ class ConversationResponse(BaseModel):
     last_message: Optional[str] = None
     last_message_at: Optional[datetime] = None
     unread_count: int = 0
+    is_pinned: bool = False  # Whether current user has pinned this
 
 class ConversationUpdate(BaseModel):
     """Update conversation (groups only)"""
@@ -53,6 +54,9 @@ class MessageResponse(BaseModel):
     read_by: List[str]
     created_at: datetime
     is_own: bool = False  # Set by API based on current user
+    is_pinned: bool = False
+    pinned_by: Optional[str] = None
+    pinned_at: Optional[datetime] = None
 
 class ChatAttachmentResponse(BaseModel):
     """Chat attachment response"""
@@ -76,3 +80,24 @@ class TypingIndicator(BaseModel):
 class ReadReceipt(BaseModel):
     """Mark messages as read request"""
     message_ids: List[str]
+
+# Pin schemas
+class PinConversation(BaseModel):
+    """Pin/unpin conversation request"""
+    pin: bool = True
+
+class PinMessage(BaseModel):
+    """Pin/unpin message request"""
+    pin: bool = True
+
+# Search schema
+class MessageSearchResponse(BaseModel):
+    """Search result response"""
+    id: str
+    conversation_id: str
+    conversation_name: Optional[str]
+    sender_id: str
+    sender_name: str
+    content: str
+    created_at: datetime
+    is_pinned: bool = False
