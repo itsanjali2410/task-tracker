@@ -615,3 +615,216 @@ async def get_available_users_for_chat(
     ).to_list(100)
     
     return users
+
+
+# ============================================
+# PIN AND SEARCH ENDPOINTS
+# ============================================
+
+@router.post("/conversations/{conversation_id}/pin")
+async def pin_conversation(
+    conversation_id: str,
+    pin_data: PinConversation,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Pin or unpin a conversation for the current user"""
+    db = get_database()
+    
+    # Verify conversation exists and user is participant
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    if pin_data.pin:
+        # Pin: add user to pinned_by list
+        await db.conversations.update_one(
+            {"id": conversation_id},
+            {"$addToSet": {"pinned_by": current_user.id}}
+        )
+        return {"message": "Conversation pinned", "is_pinned": True}
+    else:
+        # Unpin: remove user from pinned_by list
+        await db.conversations.update_one(
+            {"id": conversation_id},
+            {"$pull": {"pinned_by": current_user.id}}
+        )
+        return {"message": "Conversation unpinned", "is_pinned": False}
+
+
+@router.post("/conversations/{conversation_id}/messages/{message_id}/pin")
+async def pin_message(
+    conversation_id: str,
+    message_id: str,
+    pin_data: PinMessage,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Pin or unpin a message in a conversation"""
+    db = get_database()
+    
+    # Verify conversation exists and user is participant
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    # Verify message exists
+    message = await db.messages.find_one(
+        {"id": message_id, "conversation_id": conversation_id},
+        {"_id": 0}
+    )
+    
+    if not message:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Message not found"
+        )
+    
+    if pin_data.pin:
+        # Pin message
+        await db.messages.update_one(
+            {"id": message_id},
+            {"$set": {
+                "is_pinned": True,
+                "pinned_by": current_user.id,
+                "pinned_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"message": "Message pinned", "is_pinned": True}
+    else:
+        # Unpin message
+        await db.messages.update_one(
+            {"id": message_id},
+            {"$set": {
+                "is_pinned": False,
+                "pinned_by": None,
+                "pinned_at": None
+            }}
+        )
+        return {"message": "Message unpinned", "is_pinned": False}
+
+
+@router.get("/conversations/{conversation_id}/pinned-messages", response_model=List[MessageResponse])
+async def get_pinned_messages(
+    conversation_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all pinned messages in a conversation"""
+    db = get_database()
+    
+    # Verify conversation
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    messages = await db.messages.find(
+        {"conversation_id": conversation_id, "is_pinned": True},
+        {"_id": 0}
+    ).sort("pinned_at", -1).to_list(100)
+    
+    result = []
+    for msg in messages:
+        if isinstance(msg.get('created_at'), str):
+            msg['created_at'] = datetime.fromisoformat(msg['created_at'])
+        if isinstance(msg.get('pinned_at'), str):
+            msg['pinned_at'] = datetime.fromisoformat(msg['pinned_at'])
+        
+        result.append(MessageResponse(
+            **msg,
+            is_own=msg["sender_id"] == current_user.id
+        ))
+    
+    return result
+
+
+@router.get("/search", response_model=List[MessageSearchResponse])
+async def search_messages(
+    q: str = Query(..., min_length=1, description="Search query"),
+    conversation_id: Optional[str] = Query(None, description="Filter by conversation"),
+    limit: int = Query(50, ge=1, le=100),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Search messages across all conversations or within a specific conversation
+    - Searches in message content
+    - Only returns messages from conversations user participates in
+    """
+    db = get_database()
+    
+    # Get all conversations user participates in
+    user_convs = await db.conversations.find(
+        {"participants": current_user.id},
+        {"_id": 0, "id": 1, "name": 1, "is_group": 1, "participant_names": 1, "participants": 1}
+    ).to_list(100)
+    
+    conv_ids = [c["id"] for c in user_convs]
+    conv_map = {c["id"]: c for c in user_convs}
+    
+    if not conv_ids:
+        return []
+    
+    # Build search query
+    query = {
+        "conversation_id": {"$in": conv_ids},
+        "content": {"$regex": re.escape(q), "$options": "i"}
+    }
+    
+    if conversation_id:
+        if conversation_id not in conv_ids:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+        query["conversation_id"] = conversation_id
+    
+    messages = await db.messages.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    result = []
+    for msg in messages:
+        if isinstance(msg.get('created_at'), str):
+            msg['created_at'] = datetime.fromisoformat(msg['created_at'])
+        
+        conv = conv_map.get(msg["conversation_id"], {})
+        
+        # Get conversation name
+        if conv.get("is_group"):
+            conv_name = conv.get("name", "Group")
+        else:
+            # For DM, get the other participant's name
+            other_idx = next((i for i, pid in enumerate(conv.get("participants", [])) if pid != current_user.id), 0)
+            conv_name = conv.get("participant_names", ["Unknown"])[other_idx] if other_idx < len(conv.get("participant_names", [])) else "Unknown"
+        
+        result.append(MessageSearchResponse(
+            id=msg["id"],
+            conversation_id=msg["conversation_id"],
+            conversation_name=conv_name,
+            sender_id=msg["sender_id"],
+            sender_name=msg["sender_name"],
+            content=msg["content"],
+            created_at=msg["created_at"],
+            is_pinned=msg.get("is_pinned", False)
+        ))
+    
+    return result
