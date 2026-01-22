@@ -63,6 +63,37 @@ async def create_task(
     
     await db.tasks.insert_one(task_dict)
     
+    # Create notification for assigned user
+    await create_notification(
+        user_id=task_data.assigned_to,
+        notification_type="task_assigned",
+        message=f"You have been assigned a new task: '{task_dict['title']}'",
+        related_task_id=task_in_db.id
+    )
+    
+    # Send email notification
+    send_task_assigned_email(
+        to_email=assigned_user["email"],
+        to_name=assigned_user["full_name"],
+        task_title=task_dict["title"],
+        task_due_date=task_dict["due_date"],
+        assigned_by=current_user.full_name
+    )
+    
+    # Log audit
+    await log_audit(
+        action_type="task_created",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=task_in_db.id,
+        metadata={
+            "task_title": task_dict["title"],
+            "assigned_to": assigned_user["full_name"],
+            "priority": task_dict["priority"]
+        }
+    )
+    
     return TaskResponse(**task_in_db.model_dump())
 
 @router.get("", response_model=List[TaskResponse])
