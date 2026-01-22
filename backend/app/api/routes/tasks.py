@@ -224,6 +224,31 @@ async def update_task(
         # Add completed_at timestamp when task is marked as completed
         if update_data["status"] == "completed" and task.get("status") != "completed":
             update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Create notification for status change
+        if task.get("status") != update_data["status"]:
+            # Notify assigned user if status changed by manager/admin
+            if current_user.role != "team_member":
+                await create_notification(
+                    user_id=task["assigned_to"],
+                    notification_type="status_changed",
+                    message=f"Task '{task['title']}' status changed to: {update_data['status'].replace('_', ' ')}",
+                    related_task_id=task_id
+                )
+            
+            # Log status change audit
+            await log_audit(
+                action_type="status_changed",
+                user_id=current_user.id,
+                user_name=current_user.full_name,
+                user_email=current_user.email,
+                task_id=task_id,
+                metadata={
+                    "old_status": task.get("status"),
+                    "new_status": update_data["status"],
+                    "task_title": task["title"]
+                }
+            )
     
     # Update timestamp
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
