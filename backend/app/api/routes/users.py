@@ -132,3 +132,221 @@ async def get_user(
         user['updated_at'] = datetime.now(timezone.utc)
     
     return UserResponse(**user)
+
+@router.patch("/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: str,
+    user_update: UserUpdate,
+    current_user: UserResponse = Depends(require_role(["admin"]))
+):
+    """
+    Update user details (Admin only)
+    - Can update email, full_name, role, is_active
+    - Cannot update password (use password reset endpoint)
+    """
+    db = get_database()
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    update_data = user_update.model_dump(exclude_unset=True)
+    
+    if not update_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update"
+        )
+    
+    # Check email uniqueness if updating email
+    if "email" in update_data and update_data["email"] != user["email"]:
+        existing = await db.users.find_one({"email": update_data["email"]})
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already in use"
+            )
+    
+    # Validate role if updating
+    if "role" in update_data:
+        valid_roles = ["admin", "manager", "team_member"]
+        if update_data["role"] not in valid_roles:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}"
+            )
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.users.update_one({"id": user_id}, {"$set": update_data})
+    
+    # Log audit
+    await log_audit(
+        action_type="user_updated",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        metadata={
+            "updated_user_id": user_id,
+            "updated_user_email": user.get("email"),
+            "changes": update_data
+        }
+    )
+    
+    # Fetch updated user
+    updated_user = await db.users.find_one({"id": user_id}, {"_id": 0, "hashed_password": 0})
+    
+    if isinstance(updated_user.get('created_at'), str):
+        updated_user['created_at'] = datetime.fromisoformat(updated_user['created_at'])
+    elif 'created_at' not in updated_user:
+        updated_user['created_at'] = datetime.now(timezone.utc)
+    
+    if isinstance(updated_user.get('updated_at'), str):
+        updated_user['updated_at'] = datetime.fromisoformat(updated_user['updated_at'])
+    elif 'updated_at' not in updated_user:
+        updated_user['updated_at'] = datetime.now(timezone.utc)
+    
+    return UserResponse(**updated_user)
+
+@router.post("/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: str,
+    new_password: str,
+    current_user: UserResponse = Depends(require_role(["admin"]))
+):
+    """
+    Reset user password (Admin only)
+    - Hashes new password
+    - Updates user document
+    """
+    db = get_database()
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Hash new password
+    hashed_password = get_password_hash(new_password)
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "hashed_password": hashed_password,
+            "password": hashed_password,  # Update both fields for compatibility
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Revoke all refresh tokens for this user
+    await db.refresh_tokens.update_many(
+        {"user_id": user_id, "is_revoked": False},
+        {"$set": {"is_revoked": True}}
+    )
+    
+    # Log audit
+    await log_audit(
+        action_type="password_reset",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        metadata={
+            "target_user_id": user_id,
+            "target_user_email": user.get("email")
+        }
+    )
+    
+    return {"message": "Password reset successfully"}
+
+@router.post("/{user_id}/deactivate")
+async def deactivate_user(
+    user_id: str,
+    current_user: UserResponse = Depends(require_role(["admin"]))
+):
+    """
+    Deactivate user (Admin only)
+    - Sets is_active to False
+    - User cannot log in
+    """
+    db = get_database()
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "is_active": False,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Revoke all refresh tokens
+    await db.refresh_tokens.update_many(
+        {"user_id": user_id, "is_revoked": False},
+        {"$set": {"is_revoked": True}}
+    )
+    
+    # Log audit
+    await log_audit(
+        action_type="user_deactivated",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        metadata={
+            "target_user_id": user_id,
+            "target_user_email": user.get("email")
+        }
+    )
+    
+    return {"message": "User deactivated successfully"}
+
+@router.post("/{user_id}/activate")
+async def activate_user(
+    user_id: str,
+    current_user: UserResponse = Depends(require_role(["admin"]))
+):
+    """
+    Activate user (Admin only)
+    - Sets is_active to True
+    - User can log in again
+    """
+    db = get_database()
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "is_active": True,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Log audit
+    await log_audit(
+        action_type="user_activated",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        metadata={
+            "target_user_id": user_id,
+            "target_user_email": user.get("email")
+        }
+    )
+    
+    return {"message": "User activated successfully"}
