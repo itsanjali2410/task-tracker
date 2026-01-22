@@ -214,7 +214,7 @@ async def update_task(
     
     # Validate status if provided
     if "status" in update_data:
-        valid_statuses = ["todo", "in_progress", "completed"]
+        valid_statuses = ["todo", "in_progress", "completed", "cancelled"]
         if update_data["status"] not in valid_statuses:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
