@@ -267,6 +267,66 @@ const Chat = () => {
     }
   };
 
+  // Pin conversation
+  const pinConversation = async (convId, shouldPin) => {
+    try {
+      await axios.post(`${API}/chat/conversations/${convId}/pin`, { pin: shouldPin });
+      setConversations(prev => prev.map(c => 
+        c.id === convId ? { ...c, is_pinned: shouldPin } : c
+      ).sort((a, b) => {
+        if (a.is_pinned && !b.is_pinned) return -1;
+        if (!a.is_pinned && b.is_pinned) return 1;
+        return 0;
+      }));
+      toast.success(shouldPin ? 'Conversation pinned' : 'Conversation unpinned');
+    } catch (error) {
+      toast.error('Failed to pin conversation');
+    }
+  };
+
+  // Pin message
+  const pinMessage = async (messageId, shouldPin) => {
+    if (!selectedConv) return;
+    try {
+      await axios.post(`${API}/chat/conversations/${selectedConv.id}/messages/${messageId}/pin`, { pin: shouldPin });
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, is_pinned: shouldPin } : m
+      ));
+      setMessageMenuId(null);
+      toast.success(shouldPin ? 'Message pinned' : 'Message unpinned');
+    } catch (error) {
+      toast.error('Failed to pin message');
+    }
+  };
+
+  // Fetch pinned messages
+  const fetchPinnedMessages = async () => {
+    if (!selectedConv) return;
+    try {
+      const response = await axios.get(`${API}/chat/conversations/${selectedConv.id}/pinned-messages`);
+      setPinnedMessages(response.data);
+      setShowPinnedMessages(true);
+    } catch (error) {
+      toast.error('Failed to fetch pinned messages');
+    }
+  };
+
+  // Search messages
+  const searchMessages = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const params = new URLSearchParams({ q: searchQuery });
+      if (selectedConv) params.append('conversation_id', selectedConv.id);
+      const response = await axios.get(`${API}/chat/search?${params}`);
+      setSearchResults(response.data);
+    } catch (error) {
+      toast.error('Search failed');
+    } finally {
+      setSearching(false);
+    }
+  };
+
   const getConversationName = (conv) => {
     if (conv.is_group) return conv.name;
     const otherName = conv.participant_names.find((_, i) => conv.participants[i] !== user.id);
@@ -298,6 +358,14 @@ const Chat = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-heading font-bold text-text-primary">Messages</h2>
             <div className="flex gap-2">
+              <button
+                onClick={() => setShowSearchModal(true)}
+                className="p-2 hover:bg-slate-100 rounded-md transition-colors"
+                title="Search Messages"
+                data-testid="search-btn"
+              >
+                <Search size={20} className="text-primary" />
+              </button>
               <button
                 onClick={() => setShowNewChatModal(true)}
                 className="p-2 hover:bg-slate-100 rounded-md transition-colors"
