@@ -5,6 +5,7 @@ from app.schemas.attachment import UserProductivity, TeamOverview
 from app.schemas.user import UserResponse
 from app.db.mongodb import get_database
 from app.api.deps import get_current_user, require_role
+from app.core.roles import REPORTS_ACCESS_ROLES, NON_ADMIN_ROLES
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -43,13 +44,13 @@ async def get_user_productivity(
     """
     Get productivity metrics for users
     - Managers/Admins can view all users or specific user
-    - Team members can only view their own stats
+    - Other staff roles can only view their own stats
     """
     db = get_database()
     
-    # Authorization check
-    if current_user.role == "team_member":
-        # Team members can only view their own stats
+    # Authorization check - non-admin/manager roles can only see their own stats
+    if current_user.role in NON_ADMIN_ROLES:
+        # Staff roles (team_member, sales, operations, marketing, accounts) can only view their own stats
         target_user_id = current_user.id
     else:
         # Managers/Admins can view all or specific user
