@@ -5,6 +5,9 @@ from app.models.task import TaskInDB
 from app.schemas.user import UserResponse
 from app.db.mongodb import get_database
 from app.api.deps import get_current_user, require_role
+from app.services.notification_service import create_notification
+from app.services.audit_service import log_audit
+from app.services.email_service import send_task_assigned_email
 import uuid
 from datetime import datetime, timezone
 
