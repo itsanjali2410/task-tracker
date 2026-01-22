@@ -189,7 +189,7 @@ const TaskList = () => {
                   <option value="">Select user...</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.full_name} ({user.role.replace('_', ' ')})
+                      {user.full_name} ({user.email})
                     </option>
                   ))}
                 </select>
