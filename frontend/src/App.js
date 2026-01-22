@@ -60,7 +60,7 @@ function AppRoutes() {
       <Route
         path="/tasks"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'team_member']}>
             <TaskList />
           </ProtectedRoute>
         }
