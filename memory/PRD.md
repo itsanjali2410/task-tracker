@@ -157,11 +157,29 @@ See **DEPLOYMENT_GUIDE.md** for:
 | Phase 7 | 34 | ✅ |
 | Phase 8 | 35 | ✅ (97%) |
 | Phase 9 | 17 | ✅ (100%) |
-| **Total** | **136** | **100%** |
+| Phase 10 | 26 | ✅ (100%) |
+| **Total** | **162** | **100%** |
 
 ---
 
 ## Changelog
+
+### January 23, 2026 - Phase 10 (Bulk Operations & Kanban)
+- **Kanban Board View**:
+  - 4 columns: To Do, In Progress, Completed, Cancelled
+  - Drag-and-drop to change task status (all users)
+  - Compact task cards with priority indicator, title, assignee, due date
+  - View toggle button (List ↔ Kanban)
+- **Bulk Operations (Admin/Manager only)**:
+  - Bulk Edit: Update status, priority, or reassign multiple tasks
+  - Bulk Cancel: Soft delete (set status to "cancelled")
+  - Bulk Delete: Permanent deletion with comments/attachments cleanup
+  - Checkbox selection with Select All / Deselect All
+  - Bulk action bar with Edit, Cancel, Delete buttons
+- **New API Endpoints**:
+  - `POST /api/tasks/bulk/update`
+  - `POST /api/tasks/bulk/cancel`
+  - `DELETE /api/tasks/bulk/delete`
 
 ### January 23, 2026 - Phase 9 (Bug Fix)
 - Fixed "Failed to fetch task details" error when viewing tasks not assigned to user
