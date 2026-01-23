@@ -533,3 +533,215 @@ async def cancel_task(
         updated_task['updated_at'] = datetime.now(timezone.utc)
     
     return TaskResponse(**updated_task)
+
+
+
+# ==================== BULK OPERATIONS (Admin/Manager Only) ====================
+
+@router.post("/bulk/update", response_model=BulkOperationResponse)
+async def bulk_update_tasks(
+    bulk_data: BulkTaskUpdate,
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Bulk update multiple tasks (Admin and Manager only)
+    - Can update status, priority, or assigned_to
+    - At least one update field must be provided
+    """
+    db = get_database()
+    
+    if not bulk_data.task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No task IDs provided"
+        )
+    
+    # Build update document
+    update_fields = {}
+    
+    if bulk_data.status:
+        valid_statuses = ["todo", "in_progress", "completed", "cancelled"]
+        if bulk_data.status not in valid_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
+        update_fields["status"] = bulk_data.status
+    
+    if bulk_data.priority:
+        valid_priorities = ["low", "medium", "high"]
+        if bulk_data.priority not in valid_priorities:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid priority. Must be one of: {', '.join(valid_priorities)}"
+            )
+        update_fields["priority"] = bulk_data.priority
+    
+    if bulk_data.assigned_to:
+        assigned_user = await db.users.find_one({"id": bulk_data.assigned_to}, {"_id": 0})
+        if not assigned_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assigned user not found"
+            )
+        update_fields["assigned_to"] = bulk_data.assigned_to
+        update_fields["assigned_to_email"] = assigned_user["email"]
+        update_fields["assigned_to_name"] = assigned_user["full_name"]
+    
+    if not update_fields:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No update fields provided"
+        )
+    
+    update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Perform bulk update
+    result = await db.tasks.update_many(
+        {"id": {"$in": bulk_data.task_ids}},
+        {"$set": update_fields}
+    )
+    
+    # Log audit for bulk operation
+    await log_audit(
+        action_type="bulk_task_update",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=None,
+        metadata={
+            "task_count": result.modified_count,
+            "task_ids": bulk_data.task_ids,
+            "update_fields": list(update_fields.keys())
+        }
+    )
+    
+    return BulkOperationResponse(
+        success=True,
+        updated_count=result.modified_count,
+        failed_count=len(bulk_data.task_ids) - result.modified_count,
+        message=f"Successfully updated {result.modified_count} tasks"
+    )
+
+
+@router.post("/bulk/cancel", response_model=BulkOperationResponse)
+async def bulk_cancel_tasks(
+    bulk_data: BulkTaskCancel,
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Bulk cancel multiple tasks (Admin and Manager only)
+    - Sets status to 'cancelled' for all specified tasks
+    - Tasks remain in database for audit trail
+    """
+    db = get_database()
+    
+    if not bulk_data.task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No task IDs provided"
+        )
+    
+    # Get task titles for audit log
+    tasks = await db.tasks.find(
+        {"id": {"$in": bulk_data.task_ids}},
+        {"_id": 0, "id": 1, "title": 1}
+    ).to_list(len(bulk_data.task_ids))
+    
+    # Perform bulk cancel
+    result = await db.tasks.update_many(
+        {"id": {"$in": bulk_data.task_ids}},
+        {"$set": {
+            "status": "cancelled",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Log audit for bulk cancel
+    await log_audit(
+        action_type="bulk_task_cancel",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=None,
+        metadata={
+            "task_count": result.modified_count,
+            "task_ids": bulk_data.task_ids,
+            "task_titles": [t["title"] for t in tasks]
+        }
+    )
+    
+    return BulkOperationResponse(
+        success=True,
+        updated_count=result.modified_count,
+        failed_count=len(bulk_data.task_ids) - result.modified_count,
+        message=f"Successfully cancelled {result.modified_count} tasks"
+    )
+
+
+@router.delete("/bulk/delete", response_model=BulkOperationResponse)
+async def bulk_delete_tasks(
+    bulk_data: BulkTaskDelete,
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Bulk delete multiple tasks permanently (Admin and Manager only)
+    - WARNING: This permanently removes tasks from the database
+    - Also deletes associated comments and attachments
+    """
+    db = get_database()
+    
+    if not bulk_data.task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No task IDs provided"
+        )
+    
+    # Get task titles for audit log before deletion
+    tasks = await db.tasks.find(
+        {"id": {"$in": bulk_data.task_ids}},
+        {"_id": 0, "id": 1, "title": 1}
+    ).to_list(len(bulk_data.task_ids))
+    
+    # Delete associated comments
+    await db.comments.delete_many({"task_id": {"$in": bulk_data.task_ids}})
+    
+    # Delete associated attachments (and their files)
+    attachments = await db.attachments.find(
+        {"task_id": {"$in": bulk_data.task_ids}},
+        {"_id": 0, "file_path": 1}
+    ).to_list(1000)
+    
+    import os
+    for attachment in attachments:
+        if os.path.exists(attachment.get("file_path", "")):
+            try:
+                os.remove(attachment["file_path"])
+            except:
+                pass
+    
+    await db.attachments.delete_many({"task_id": {"$in": bulk_data.task_ids}})
+    
+    # Delete tasks
+    result = await db.tasks.delete_many({"id": {"$in": bulk_data.task_ids}})
+    
+    # Log audit for bulk delete
+    await log_audit(
+        action_type="bulk_task_delete",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=None,
+        metadata={
+            "task_count": result.deleted_count,
+            "task_ids": bulk_data.task_ids,
+            "task_titles": [t["title"] for t in tasks]
+        }
+    )
+    
+    return BulkOperationResponse(
+        success=True,
+        updated_count=result.deleted_count,
+        failed_count=len(bulk_data.task_ids) - result.deleted_count,
+        message=f"Successfully deleted {result.deleted_count} tasks permanently"
+    )
