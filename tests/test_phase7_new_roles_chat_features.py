@@ -8,7 +8,7 @@ import os
 import uuid
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://tripstars-tasks.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://taskflow-travel.preview.emergentagent.com').rstrip('/')
 API_URL = f"{BASE_URL}/api"
 
 # Test credentials
