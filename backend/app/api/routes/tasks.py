@@ -214,6 +214,9 @@ async def list_tasks(
         tasks = await db.tasks.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
         priority_order = {"high": 0, "medium": 1, "low": 2}
         tasks.sort(key=lambda x: priority_order.get(x.get("priority", "low"), 2), reverse=(sort_order == "desc"))
+    elif sort_field == "title":
+        # Title sorting needs case-insensitive collation
+        tasks = await db.tasks.find(query, {"_id": 0}).sort(sort_field, sort_direction).collation({'locale': 'en', 'strength': 2}).skip(skip).limit(limit).to_list(limit)
     else:
         tasks = await db.tasks.find(query, {"_id": 0}).sort(sort_field, sort_direction).skip(skip).limit(limit).to_list(limit)
     
