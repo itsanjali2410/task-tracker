@@ -136,22 +136,16 @@ async def list_task_attachments(
 ):
     """
     List all attachments for a specific task
+    - All authenticated users can view attachments (since all tasks are visible)
     """
     db = get_database()
     
-    # Verify task exists and user has access
+    # Verify task exists
     task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
-        )
-    
-    # Check authorization
-    if current_user.role == "team_member" and task["assigned_to"] != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to view attachments for this task"
         )
     
     # Fetch attachments
