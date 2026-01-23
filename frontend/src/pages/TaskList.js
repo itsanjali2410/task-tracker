@@ -437,6 +437,7 @@ const TaskList = () => {
             ))
           )}
         </div>
+      )}
 
       {/* Create Task Modal */}
       {showModal && (
