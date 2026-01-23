@@ -156,11 +156,19 @@ See **DEPLOYMENT_GUIDE.md** for:
 | Phase 6 | 27 | ✅ |
 | Phase 7 | 34 | ✅ |
 | Phase 8 | 35 | ✅ (97%) |
-| **Total** | **119** | **99%** |
+| Phase 9 | 17 | ✅ (100%) |
+| **Total** | **136** | **100%** |
 
 ---
 
 ## Changelog
+
+### January 23, 2026 - Phase 9 (Bug Fix)
+- Fixed "Failed to fetch task details" error when viewing tasks not assigned to user
+- Root cause: Authorization restrictions on comments/attachments conflicted with "all tasks visible" feature
+- Updated comments.py: All authenticated users can now view and add comments on any task
+- Updated attachments.py: All authenticated users can now view attachments on any task
+- Fixed case-insensitive title sorting using MongoDB collation
 
 ### January 23, 2026 - Phase 8
 - All users can now see ALL tasks (removed role-based restrictions)
