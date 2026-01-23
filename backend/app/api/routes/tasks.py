@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List
-from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
+from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate, BulkTaskUpdate, BulkTaskCancel, BulkTaskDelete, BulkOperationResponse
 from app.models.task import TaskInDB
 from app.schemas.user import UserResponse
 from app.db.mongodb import get_database
