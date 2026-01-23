@@ -107,18 +107,115 @@ async def create_task(
     return TaskResponse(**task_in_db.model_dump())
 
 @router.get("", response_model=List[TaskResponse])
-async def list_tasks(current_user: UserResponse = Depends(get_current_user)):
+async def list_tasks(
+    # Search parameters
+    search: str = Query(None, description="Search in title and description"),
+    # Filter parameters
+    status: str = Query(None, description="Filter by status: todo, in_progress, completed, cancelled"),
+    priority: str = Query(None, description="Filter by priority: low, medium, high"),
+    assigned_to: str = Query(None, description="Filter by assigned user ID"),
+    created_by: str = Query(None, description="Filter by creator user ID"),
+    # Date filters
+    due_date_from: str = Query(None, description="Due date from (YYYY-MM-DD)"),
+    due_date_to: str = Query(None, description="Due date to (YYYY-MM-DD)"),
+    created_from: str = Query(None, description="Created date from (YYYY-MM-DD)"),
+    created_to: str = Query(None, description="Created date to (YYYY-MM-DD)"),
+    # Overdue filter
+    overdue: bool = Query(None, description="Filter overdue tasks only"),
+    # Sorting
+    sort_by: str = Query("created_at", description="Sort by: created_at, due_date, priority, status, title"),
+    sort_order: str = Query("desc", description="Sort order: asc, desc"),
+    # Pagination
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
+    # Current user
+    current_user: UserResponse = Depends(get_current_user)
+):
     """
-    List tasks based on user role
-    - Team members see only their assigned tasks
-    - Admins and Managers see all tasks
+    List all tasks with search, filtering, sorting, and pagination.
+    All authenticated users can see all tasks.
+    
+    Filters:
+    - search: Search in title and description (case-insensitive)
+    - status: todo, in_progress, completed, cancelled
+    - priority: low, medium, high
+    - assigned_to: User ID
+    - created_by: User ID
+    - due_date_from/to: Date range for due date
+    - created_from/to: Date range for creation date
+    - overdue: true to show only overdue tasks
+    
+    Sorting:
+    - sort_by: created_at, due_date, priority, status, title
+    - sort_order: asc, desc
     """
     db = get_database()
     
-    if current_user.role == "team_member":
-        tasks = await db.tasks.find({"assigned_to": current_user.id}, {"_id": 0}).to_list(1000)
+    # Build query
+    query = {}
+    
+    # Text search (title and description)
+    if search:
+        query["$or"] = [
+            {"title": {"$regex": search, "$options": "i"}},
+            {"description": {"$regex": search, "$options": "i"}}
+        ]
+    
+    # Status filter
+    if status:
+        valid_statuses = ["todo", "in_progress", "completed", "cancelled"]
+        if status in valid_statuses:
+            query["status"] = status
+    
+    # Priority filter
+    if priority:
+        valid_priorities = ["low", "medium", "high"]
+        if priority in valid_priorities:
+            query["priority"] = priority
+    
+    # Assigned to filter
+    if assigned_to:
+        query["assigned_to"] = assigned_to
+    
+    # Created by filter
+    if created_by:
+        query["created_by"] = created_by
+    
+    # Due date range filter
+    if due_date_from or due_date_to:
+        query["due_date"] = {}
+        if due_date_from:
+            query["due_date"]["$gte"] = due_date_from
+        if due_date_to:
+            query["due_date"]["$lte"] = due_date_to
+    
+    # Created date range filter
+    if created_from or created_to:
+        created_filter = {}
+        if created_from:
+            created_filter["$gte"] = f"{created_from}T00:00:00"
+        if created_to:
+            created_filter["$lte"] = f"{created_to}T23:59:59"
+        query["created_at"] = created_filter
+    
+    # Overdue filter
+    if overdue:
+        current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        query["due_date"] = {"$lt": current_date}
+        query["status"] = {"$nin": ["completed", "cancelled"]}
+    
+    # Sorting
+    sort_direction = -1 if sort_order == "desc" else 1
+    sort_field = sort_by if sort_by in ["created_at", "due_date", "priority", "status", "title"] else "created_at"
+    
+    # Priority needs special handling for proper sorting
+    if sort_field == "priority":
+        # We'll sort in memory after fetching
+        tasks = await db.tasks.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+        priority_order = {"high": 0, "medium": 1, "low": 2}
+        tasks.sort(key=lambda x: priority_order.get(x.get("priority", "low"), 2), reverse=(sort_order == "desc"))
     else:
-        tasks = await db.tasks.find({}, {"_id": 0}).to_list(1000)
+        tasks = await db.tasks.find(query, {"_id": 0}).sort(sort_field, sort_direction).skip(skip).limit(limit).to_list(limit)
     
     # Convert datetime strings
     for task in tasks:
@@ -134,14 +231,74 @@ async def list_tasks(current_user: UserResponse = Depends(get_current_user)):
     
     return [TaskResponse(**task) for task in tasks]
 
+
+@router.get("/stats/summary")
+async def get_task_stats(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get task statistics summary for dashboard
+    Returns counts by status, priority, and overdue tasks
+    """
+    db = get_database()
+    
+    # Get all tasks
+    tasks = await db.tasks.find({}, {"_id": 0, "status": 1, "priority": 1, "due_date": 1, "assigned_to": 1}).to_list(10000)
+    
+    current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Calculate stats
+    stats = {
+        "total": len(tasks),
+        "by_status": {
+            "todo": 0,
+            "in_progress": 0,
+            "completed": 0,
+            "cancelled": 0
+        },
+        "by_priority": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+        },
+        "overdue": 0,
+        "my_tasks": 0,
+        "my_overdue": 0
+    }
+    
+    for task in tasks:
+        # By status
+        status = task.get("status", "todo")
+        if status in stats["by_status"]:
+            stats["by_status"][status] += 1
+        
+        # By priority
+        priority = task.get("priority", "medium")
+        if priority in stats["by_priority"]:
+            stats["by_priority"][priority] += 1
+        
+        # Overdue check
+        due_date = task.get("due_date", "")
+        is_overdue = due_date < current_date and status not in ["completed", "cancelled"]
+        if is_overdue:
+            stats["overdue"] += 1
+        
+        # My tasks
+        if task.get("assigned_to") == current_user.id:
+            stats["my_tasks"] += 1
+            if is_overdue:
+                stats["my_overdue"] += 1
+    
+    return stats
+
+
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
     task_id: str,
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
-    Get task by ID
-    - Team members can only view their own tasks
+    Get task by ID - All users can view any task
     """
     db = get_database()
     task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
@@ -150,13 +307,6 @@ async def get_task(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
-        )
-    
-    # Check authorization for team members
-    if current_user.role == "team_member" and task["assigned_to"] != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to view this task"
         )
     
     # Convert datetime strings
