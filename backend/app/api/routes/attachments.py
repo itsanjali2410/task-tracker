@@ -160,6 +160,7 @@ async def download_attachment(
 ):
     """
     Download an attachment
+    - Any authenticated user can download attachments (since all tasks are visible)
     """
     db = get_database()
     
@@ -169,21 +170,6 @@ async def download_attachment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Attachment not found"
-        )
-    
-    # Verify task access
-    task = await db.tasks.find_one({"id": attachment["task_id"]}, {"_id": 0})
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Associated task not found"
-        )
-    
-    # Check authorization
-    if current_user.role == "team_member" and task["assigned_to"] != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to download this file"
         )
     
     # Check if file exists
