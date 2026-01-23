@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 class TaskBase(BaseModel):
     title: str
@@ -34,3 +34,22 @@ class TaskResponse(BaseModel):
     due_date: str
     created_at: datetime
     updated_at: datetime
+
+# Bulk operation schemas
+class BulkTaskUpdate(BaseModel):
+    task_ids: List[str]
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    assigned_to: Optional[str] = None
+
+class BulkTaskCancel(BaseModel):
+    task_ids: List[str]
+
+class BulkTaskDelete(BaseModel):
+    task_ids: List[str]
+
+class BulkOperationResponse(BaseModel):
+    success: bool
+    updated_count: int
+    failed_count: int
+    message: str
