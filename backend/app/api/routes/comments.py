@@ -20,7 +20,7 @@ async def create_comment(
 ):
     """
     Create a comment on a task
-    - Any authenticated user can comment
+    - Any authenticated user can comment on any task (since all tasks are visible)
     - Comments are linked to task and user
     """
     db = get_database()
@@ -31,13 +31,6 @@ async def create_comment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
-        )
-    
-    # Check authorization for team members
-    if current_user.role == "team_member" and task["assigned_to"] != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to comment on this task"
         )
     
     # Create comment document
