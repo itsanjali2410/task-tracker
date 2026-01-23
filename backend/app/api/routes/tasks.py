@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.models.task import TaskInDB
