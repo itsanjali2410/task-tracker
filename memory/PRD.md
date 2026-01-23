@@ -12,120 +12,102 @@ TripStars is an internal Task Management System for a travel company, built to m
 ### Admin
 - Full system access
 - User management (CRUD for all roles)
-- Task management for all users
 - View all reports and audit logs
 - Cannot deactivate own account
 
 ### Manager  
-- Task management (create, assign, update)
 - View all tasks and reports
 - Cannot manage users
 - Can cancel tasks
-- Create group chats
 
-### Sales / Operations / Marketing / Accounts
+### Sales / Operations / Marketing / Accounts / Team Member
+- **See ALL tasks** across the organization
 - Create tasks and assign to other staff (not admins)
 - Add comments and attachments to tasks
 - Participate in one-to-one and group chats
 - Receive notifications
 - Cannot manage users, reports, or audit logs
 
-### Team Member (Legacy)
-- Same permissions as Sales/Operations/Marketing/Accounts
-- Maintained for backward compatibility
-
 ---
 
 ## Core Features
 
-### Phase 1-5: Foundation through Production Hardening (COMPLETE)
+### Phase 1-6: Foundation through Chat (COMPLETE)
 - User authentication with JWT + Refresh tokens
 - Role-based access control
 - Task CRUD with comments and attachments
 - Productivity reports and dashboards
-- Notifications (in-app + email)
+- Notifications (in-app + email + WebSocket)
 - Background scheduler
 - Audit logging
 - User Management CRUD frontend
+- Real-time Chat (DM + Groups)
 
-### Phase 6: Chat System (COMPLETE)
-- Direct Messages (1-on-1)
-- Group Chats (everyone can create)
-- File attachments (PDF, JPG, PNG, DOC, DOCX - 10MB)
-- Read receipts (✓ delivered, ✓✓ read)
-- Typing indicators
-- Real-time WebSocket delivery
+### Phase 7: Extended Roles & Chat Enhancements (COMPLETE)
+- New Roles: Sales, Operations, Marketing, Accounts
+- Chat: Pin conversations and messages
+- Chat: Search messages
 
-### Phase 7: Extended Roles & Chat Enhancements (COMPLETE - Jan 22, 2026)
-- **New Roles Added**
-  - Sales, Operations, Marketing, Accounts
-  - Same capabilities as team_member
-  - Cannot assign tasks to admins
-  - Cannot access reports/audit (except own stats)
-
-- **Chat Pin Feature**
-  - Pin/unpin conversations (per user)
-  - Pin/unpin messages
-  - Pinned conversations appear first
-  - View pinned messages in conversation
-
-- **Chat Search Feature**
-  - Search across all conversations
-  - Search within specific conversation
-  - Results show conversation name and sender
-
-- **Security Fixes**
-  - Admin cannot deactivate self
-  - Reports restricted for staff roles (own stats only)
+### Phase 8: All Users See All Tasks + Search/Filter (COMPLETE - Jan 23, 2026)
+- **All Users See All Tasks**
+  - Removed role-based task visibility restrictions
+  - All authenticated users can view all tasks across the organization
+  
+- **Task Search**
+  - Search by title (case-insensitive)
+  - Search by description (case-insensitive)
+  - Debounced search input in frontend
+  
+- **Task Filters**
+  - Filter by status: todo, in_progress, completed, cancelled
+  - Filter by priority: low, medium, high
+  - Filter by assigned user
+  - Filter by due date range (from/to)
+  - Filter overdue tasks only
+  
+- **Task Sorting**
+  - Sort by: created_at, due_date, priority, status, title
+  - Sort order: ascending or descending
+  
+- **Pagination**
+  - Skip and limit parameters
+  - Up to 500 records per request
+  
+- **Task Stats Dashboard**
+  - Total tasks count
+  - Count by status (todo, in_progress, completed, cancelled)
+  - Count by priority (high, medium, low)
+  - Overdue tasks count
+  - My tasks count
 
 ---
 
 ## API Endpoints
 
-### Authentication
+### Tasks (Updated)
 | Endpoint | Method | Access | Description |
 |----------|--------|--------|-------------|
-| `/api/auth/login` | POST | Public | Login |
-| `/api/auth/refresh` | POST | Public | Refresh token |
-| `/api/auth/logout` | POST | Auth | Logout |
-| `/api/auth/me` | GET | Auth | Get current user |
-
-### Users
-| Endpoint | Method | Access | Description |
-|----------|--------|--------|-------------|
-| `/api/users/assignable` | GET | All Staff | Users for task assignment |
-| `/api/users` | GET | Admin/Manager | List all users |
-| `/api/users` | POST | Admin | Create user |
-| `/api/users/{id}` | PATCH | Admin | Update user |
-| `/api/users/{id}/deactivate` | POST | Admin | Deactivate (not self) |
-| `/api/users/{id}/activate` | POST | Admin | Activate user |
-
-### Tasks
-| Endpoint | Method | Access | Description |
-|----------|--------|--------|-------------|
-| `/api/tasks` | GET | All Staff | List tasks |
+| `/api/tasks` | GET | All Staff | List all tasks with search/filter/sort |
+| `/api/tasks/stats/summary` | GET | All Staff | Get task statistics |
 | `/api/tasks` | POST | All Staff | Create task |
+| `/api/tasks/{id}` | GET | All Staff | Get task details |
 | `/api/tasks/{id}` | PATCH | All Staff | Update task |
-| `/api/tasks/{id}` | DELETE | - | **DISABLED** (405) |
 | `/api/tasks/{id}/cancel` | PATCH | All Staff | Cancel task |
 
-### Chat
-| Endpoint | Method | Access | Description |
-|----------|--------|--------|-------------|
-| `/api/chat/conversations` | GET | All Staff | List conversations |
-| `/api/chat/conversations` | POST | All Staff | Create DM/Group |
-| `/api/chat/conversations/{id}/messages` | GET | Participants | Get messages |
-| `/api/chat/conversations/{id}/messages` | POST | Participants | Send message |
-| `/api/chat/conversations/{id}/pin` | POST | Participants | Pin/unpin conversation |
-| `/api/chat/conversations/{id}/messages/{mid}/pin` | POST | Participants | Pin/unpin message |
-| `/api/chat/conversations/{id}/pinned-messages` | GET | Participants | Get pinned messages |
-| `/api/chat/search` | GET | All Staff | Search messages |
-| `/api/chat/conversations/{id}/attachments` | POST | Participants | Upload attachment |
-
-### WebSocket
-| Endpoint | Description |
-|----------|-------------|
-| `/api/ws?token=<token>` | Real-time notifications & chat |
+### Task Query Parameters
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `search` | string | Search in title and description |
+| `status` | string | Filter: todo, in_progress, completed, cancelled |
+| `priority` | string | Filter: low, medium, high |
+| `assigned_to` | string | Filter by user ID |
+| `due_date_from` | string | Filter: YYYY-MM-DD |
+| `due_date_to` | string | Filter: YYYY-MM-DD |
+| `overdue` | boolean | Show only overdue tasks |
+| `sort_by` | string | Sort: created_at, due_date, priority, status, title |
+| `sort_order` | string | Sort order: asc, desc |
+| `skip` | integer | Pagination offset |
+| `limit` | integer | Max records (1-500) |
 
 ---
 
@@ -142,23 +124,6 @@ VALID_ROLES = [
     "accounts"
 ]
 ```
-
----
-
-## Database Collections
-
-| Collection | Description |
-|------------|-------------|
-| `users` | User accounts with roles |
-| `tasks` | Task data |
-| `comments` | Task comments |
-| `attachments` | Task attachments |
-| `notifications` | User notifications |
-| `audit_logs` | Action audit trail |
-| `refresh_tokens` | Auth tokens |
-| `conversations` | Chat conversations (pinned_by field) |
-| `messages` | Chat messages (is_pinned, pinned_by, pinned_at) |
-| `chat_attachments` | Chat file attachments |
 
 ---
 
@@ -190,24 +155,28 @@ See **DEPLOYMENT_GUIDE.md** for:
 | Phase 1-5 | 23 | ✅ |
 | Phase 6 | 27 | ✅ |
 | Phase 7 | 34 | ✅ |
-| **Total** | **84** | **100%** |
+| Phase 8 | 35 | ✅ (97%) |
+| **Total** | **119** | **99%** |
 
 ---
 
 ## Changelog
 
+### January 23, 2026 - Phase 8
+- All users can now see ALL tasks (removed role-based restrictions)
+- Task search: by title and description (case-insensitive)
+- Task filters: status, priority, assigned_to, due date range, overdue only
+- Task sorting: 5 fields with asc/desc order
+- Task stats summary endpoint
+- Pagination support
+- Frontend: Search bar, expandable filters panel, stats cards
+
 ### January 22, 2026 - Phase 7
 - Added roles: sales, operations, marketing, accounts
 - Chat: Pin conversations and messages
 - Chat: Search messages across conversations
-- Admin cannot deactivate self
-- Reports restricted for staff roles
-- Created DEPLOYMENT_GUIDE.md for PM2+Nginx+MongoDB Atlas
 
 ### Previous
 - Phase 6: Chat system with WebSocket
 - Phase 5: User Management, Notification Sound
-- Phase 4: Notifications, scheduler, audit logs
-- Phase 3: Attachments, reports, dashboard
-- Phase 2: Comments, modular architecture
-- Phase 1: Auth, tasks, users foundation
+- Phase 1-4: Foundation, Comments, Attachments, Reports, Notifications
