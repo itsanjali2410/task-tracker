@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     
     # MongoDB
-    MONGODB_URI: str = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-    DB_NAME: str = os.getenv("DB_NAME", "tripstars_db")
+    MONGODB_URI: str = os.getenv("MONGO_URL")
+    DB_NAME: str = os.getenv("DB_NAME")
     
     # Security - JWT
     SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "tripstars-secret-key-change-in-production")
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived refresh token
     
     # CORS
-    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
     
     # Email Configuration (Phase 4)
     EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "false").lower() == "true"

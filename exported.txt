@@ -1,0 +1,4954 @@
+================================================================================
+BACKEND APPLICATION CODE EXPORT
+================================================================================
+
+
+================================================================================
+FILE: backend\README.md
+================================================================================
+
+# TripStars Task Management System - Backend
+
+## Architecture
+
+Production-ready FastAPI backend with MongoDB using best practices:
+
+```
+backend/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                 # FastAPI app entry point
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── deps.py            # Shared dependencies (auth, etc.)
+│   │   └── routes/
+│   │       ├── __init__.py
+│   │       ├── auth.py        # Authentication endpoints
+│   │       ├── users.py       # User management
+│   │       ├── tasks.py       # Task management
+│   │       └── comments.py    # Comments (PHASE 2)
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── config.py          # Settings and configuration
+│   │   └── security.py        # JWT, password hashing
+│   ├── db/
+│   │   ├── __init__.py
+│   │   └── mongodb.py         # MongoDB connection
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── user.py            # User document model
+│   │   ├── task.py            # Task document model
+│   │   └── comment.py         # Comment document model
+│   └── schemas/
+│       ├── __init__.py
+│       ├── auth.py            # Auth request/response schemas
+│       ├── user.py            # User Pydantic schemas
+│       ├── task.py            # Task Pydantic schemas
+│       └── comment.py         # Comment Pydantic schemas
+├── requirements.txt
+├── .env.example
+└── README.md
+```
+
+## Database Schema (MongoDB)
+
+### Collections
+
+#### 1. users
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "hashed_password": "bcrypt_hash",
+  "role": "admin|manager|team_member",
+  "is_active": true,
+  "created_at": "2024-01-20T10:00:00Z",
+  "updated_at": "2024-01-20T10:00:00Z"
+}
+```
+
+#### 2. tasks
+```json
+{
+  "id": "uuid",
+  "title": "Task title",
+  "description": "Task description",
+  "priority": "low|medium|high",
+  "status": "todo|in_progress|completed",
+  "assigned_to": "user_id",
+  "assigned_to_email": "user@example.com",
+  "assigned_to_name": "John Doe",
+  "created_by": "user_id",
+  "created_by_name": "Manager Name",
+  "due_date": "2024-12-31",
+  "created_at": "2024-01-20T10:00:00Z",
+  "updated_at": "2024-01-20T10:00:00Z"
+}
+```
+
+#### 3. comments
+```json
+{
+  "id": "uuid",
+  "task_id": "task_uuid",
+  "user_id": "user_uuid",
+  "user_name": "John Doe",
+  "user_email": "user@example.com",
+  "content": "Comment text",
+  "created_at": "2024-01-20T10:00:00Z",
+  "updated_at": "2024-01-20T10:00:00Z"
+}
+```
+
+## API Documentation
+
+### Authentication
+
+**POST** `/api/auth/login`
+- Login with email and password
+- Returns JWT token and user data
+```json
+{
+  "email": "admin@tripstars.com",
+  "password": "Admin@123"
+}
+```
+
+**GET** `/api/auth/me`
+- Get current user info (requires JWT)
+
+### Users
+
+**POST** `/api/users` (Admin only)
+- Create new user
+```json
+{
+  "email": "user@tripstars.com",
+  "full_name": "User Name",
+  "password": "SecurePass123",
+  "role": "team_member"
+}
+```
+
+**GET** `/api/users` (Admin, Manager)
+- List all users
+
+**GET** `/api/users/{user_id}` (Admin, Manager)
+- Get user by ID
+
+### Tasks
+
+**POST** `/api/tasks` (Admin, Manager)
+- Create new task
+```json
+{
+  "title": "Task Title",
+  "description": "Task description",
+  "priority": "high",
+  "assigned_to": "user_id",
+  "due_date": "2024-12-31"
+}
+```
+
+**GET** `/api/tasks`
+- List tasks (filtered by role)
+
+**GET** `/api/tasks/{task_id}`
+- Get task by ID
+
+**PATCH** `/api/tasks/{task_id}`
+- Update task
+- Team members can only update status
+- Managers/Admins can update all fields
+
+**DELETE** `/api/tasks/{task_id}` (Admin, Manager)
+- Delete task
+
+### Comments (PHASE 2)
+
+**POST** `/api/comments`
+- Create comment on task
+```json
+{
+  "task_id": "task_uuid",
+  "content": "Comment text"
+}
+```
+
+**GET** `/api/comments/task/{task_id}`
+- List all comments for a task
+
+**GET** `/api/comments/{comment_id}`
+- Get comment by ID
+
+**PATCH** `/api/comments/{comment_id}`
+- Update comment (author only)
+
+**DELETE** `/api/comments/{comment_id}`
+- Delete comment (author or admin)
+
+### Stats
+
+**GET** `/api/stats`
+- Get task statistics (todo, in_progress, completed counts)
+
+## Setup Instructions
+
+### 1. Install Dependencies
+
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+### 2. Configure Environment
+
+Copy `.env.example` to `.env` and update values:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+```env
+MONGO_URL=mongodb://localhost:27017
+# For MongoDB Atlas:
+# MONGO_URL=mongodb+srv://username:password@cluster.mongodb.net
+
+DB_NAME=tripstars_db
+JWT_SECRET_KEY=your-super-secret-key-change-this
+CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
+```
+
+### 3. MongoDB Atlas Setup (Production)
+
+1. Create account at https://www.mongodb.com/cloud/atlas
+2. Create a new cluster (free tier available)
+3. Create a database user
+4. Whitelist your IP address (or use 0.0.0.0/0 for development)
+5. Get connection string from "Connect" -> "Connect your application"
+6. Update `MONGO_URL` in `.env`
+
+### 4. Run the Application
+
+```bash
+cd backend
+uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+```
+
+API will be available at:
+- API: http://localhost:8001/api
+- Docs: http://localhost:8001/api/docs
+- ReDoc: http://localhost:8001/api/redoc
+
+### 5. Seed Users
+
+Seed users are automatically created on startup:
+
+- **Admin**: admin@tripstars.com / Admin@123
+- **Manager**: manager@tripstars.com / Manager@123
+- **Team Member**: member@tripstars.com / Member@123
+
+## Role-Based Access Control
+
+### Admin
+- Create users
+- Assign roles
+- Full access to all tasks
+- View all comments
+
+### Manager
+- Create and assign tasks
+- Update all task fields
+- View all tasks
+- Comment on all tasks
+
+### Team Member
+- View assigned tasks only
+- Update status of own tasks
+- Comment on assigned tasks
+
+## Security Features
+
+- ✅ Password hashing with bcrypt
+- ✅ JWT authentication
+- ✅ Role-based access control
+- ✅ Environment variable configuration
+- ✅ CORS protection
+- ✅ Input validation with Pydantic
+- ✅ MongoDB ObjectId handling
+
+## Deployment
+
+### Docker (Recommended)
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app ./app
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+```
+
+### Render.com / Railway / Heroku
+
+1. Set environment variables in dashboard
+2. Connect MongoDB Atlas
+3. Deploy from Git repository
+
+### AWS EC2
+
+1. Install Python 3.11+
+2. Install dependencies
+3. Use Gunicorn/Uvicorn with systemd
+4. Setup nginx as reverse proxy
+
+## Testing
+
+Test the API:
+
+```bash
+# Health check
+curl http://localhost:8001/api/health
+
+# Login
+curl -X POST http://localhost:8001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@tripstars.com","password":"Admin@123"}'
+
+# Use token for authenticated requests
+curl -X GET http://localhost:8001/api/auth/me \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
+
+## WebSocket Ready
+
+The architecture supports WebSocket implementation:
+
+```python
+from fastapi import WebSocket
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    # Real-time updates implementation
+```
+
+## Production Checklist
+
+- [ ] Change `JWT_SECRET_KEY` to strong random string
+- [ ] Use MongoDB Atlas or managed database
+- [ ] Set `DEBUG=False`
+- [ ] Configure proper CORS origins
+- [ ] Setup HTTPS/SSL
+- [ ] Enable database backups
+- [ ] Setup monitoring (Sentry, DataDog, etc.)
+- [ ] Configure rate limiting
+- [ ] Add logging and error tracking
+
+================================================================================
+FILE: backend\server.py
+================================================================================
+
+"""
+Main entry point for the FastAPI application.
+This file imports the app from the modular structure.
+"""
+from app.main import app
+
+# This allows uvicorn to find the app when running:
+# uvicorn server:app --reload
+
+================================================================================
+FILE: backend\app\main.py
+================================================================================
+
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.db.mongodb import connect_to_mongo, close_mongo_connection, get_database
+from app.api.routes import auth, users, tasks, comments, attachments, reports, notifications, audit_logs, chat, websocket
+from app.api.deps import get_current_user
+from app.core.security import get_password_hash
+from app.services.scheduler import start_scheduler, shutdown_scheduler
+import logging
+import uuid
+from datetime import datetime, timezone
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Create FastAPI app
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
+
+# CORS middleware
+origins = settings.CORS_ORIGINS.split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Database events
+@app.on_event("startup")
+async def startup_event():
+    """Connect to MongoDB and seed initial data"""
+    await connect_to_mongo()
+    await seed_initial_data()
+    start_scheduler()  # Start background scheduler
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close MongoDB connection and stop scheduler"""
+    shutdown_scheduler()  # Stop background scheduler
+    await close_mongo_connection()
+
+# Seed initial users
+async def seed_initial_data():
+    """Create initial seed users if they don't exist"""
+    db = get_database()
+    
+    # Check if admin exists
+    existing_admin = await db.users.find_one({"email": "admin@tripstars.com"})
+    
+    if not existing_admin:
+        logger.info("Seeding initial users...")
+        
+        seed_users = [
+            {
+                "id": str(uuid.uuid4()),
+                "email": "admin@tripstars.com",
+                "full_name": "Admin User",
+                "hashed_password": get_password_hash("Admin@123"),
+                "role": "admin",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "email": "manager@tripstars.com",
+                "full_name": "Manager User",
+                "hashed_password": get_password_hash("Manager@123"),
+                "role": "manager",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "email": "member@tripstars.com",
+                "full_name": "Team Member",
+                "hashed_password": get_password_hash("Member@123"),
+                "role": "team_member",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        ]
+        
+        await db.users.insert_many(seed_users)
+        logger.info("Seed users created successfully")
+    else:
+        logger.info("Seed users already exist")
+
+# Include routers with /api prefix
+api_prefix = "/api"
+app.include_router(auth.router, prefix=api_prefix)
+app.include_router(users.router, prefix=api_prefix)
+app.include_router(tasks.router, prefix=api_prefix)
+app.include_router(comments.router, prefix=api_prefix)
+app.include_router(attachments.router, prefix=api_prefix)
+app.include_router(reports.router, prefix=api_prefix)
+app.include_router(notifications.router, prefix=api_prefix)
+app.include_router(audit_logs.router, prefix=api_prefix)
+app.include_router(chat.router, prefix=api_prefix)
+app.include_router(websocket.router, prefix=api_prefix)
+
+# Health check and stats endpoints
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION
+    }
+
+@app.get("/api/stats")
+async def get_stats(current_user = Depends(get_current_user)):
+    """
+    Get task statistics
+    - Team members see their own stats
+    - Admins and Managers see all stats
+    - Excludes cancelled tasks from counts
+    """
+    db = get_database()
+    
+    if current_user.role == "team_member":
+        tasks = await db.tasks.find({
+            "assigned_to": current_user.id,
+            "status": {"$ne": "cancelled"}
+        }, {"_id": 0}).to_list(1000)
+    else:
+        tasks = await db.tasks.find({
+            "status": {"$ne": "cancelled"}
+        }, {"_id": 0}).to_list(1000)
+    
+    total_tasks = len(tasks)
+    todo = len([t for t in tasks if t["status"] == "todo"])
+    in_progress = len([t for t in tasks if t["status"] == "in_progress"])
+    completed = len([t for t in tasks if t["status"] == "completed"])
+    
+    return {
+        "total_tasks": total_tasks,
+        "todo": todo,
+        "in_progress": in_progress,
+        "completed": completed
+    }
+
+@app.get("/api")
+async def root():
+    """Root API endpoint"""
+    return {
+        "message": "TripStars Task Management API",
+        "version": settings.APP_VERSION,
+        "docs": "/api/docs"
+    }
+
+================================================================================
+FILE: backend\app\api\deps.py
+================================================================================
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.core.security import decode_access_token
+from app.db.mongodb import get_database
+from app.schemas.user import UserResponse
+from datetime import datetime
+
+security = HTTPBearer()
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserResponse:
+    """Get current authenticated user"""
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    
+    user_id: str = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials"
+        )
+    
+    db = get_database()
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "hashed_password": 0})
+    
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    
+    # Convert ISO string to datetime if needed and add defaults if missing
+    if isinstance(user.get('created_at'), str):
+        user['created_at'] = datetime.fromisoformat(user['created_at'])
+    elif 'created_at' not in user:
+        user['created_at'] = datetime.now()
+    
+    if isinstance(user.get('updated_at'), str):
+        user['updated_at'] = datetime.fromisoformat(user['updated_at'])
+    elif 'updated_at' not in user:
+        user['updated_at'] = datetime.now()
+    
+    # Ensure is_active exists
+    if 'is_active' not in user:
+        user['is_active'] = True
+    
+    return UserResponse(**user)
+
+def require_role(allowed_roles: list):
+    """Dependency to check if user has required role"""
+    async def role_checker(current_user: UserResponse = Depends(get_current_user)):
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to perform this action"
+            )
+        return current_user
+    return role_checker
+
+================================================================================
+FILE: backend\app\api\routes\attachments.py
+================================================================================
+
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
+from fastapi.responses import FileResponse
+from typing import List
+import os
+import uuid
+from datetime import datetime, timezone
+from app.schemas.attachment import AttachmentResponse
+from app.models.attachment import AttachmentInDB
+from app.schemas.user import UserResponse
+from app.db.mongodb import get_database
+from app.api.deps import get_current_user
+from app.services.notification_service import create_notification
+from app.services.audit_service import log_audit
+
+router = APIRouter(prefix="/attachments", tags=["Attachments"])
+
+# Configuration
+UPLOAD_DIR = "/app/uploads"
+ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx"}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+def validate_file(filename: str, file_size: int) -> tuple[bool, str]:
+    """Validate file extension and size"""
+    ext = os.path.splitext(filename)[1].lower()
+    
+    if ext not in ALLOWED_EXTENSIONS:
+        return False, f"File type not allowed. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}"
+    
+    if file_size > MAX_FILE_SIZE:
+        return False, f"File size exceeds {MAX_FILE_SIZE / (1024*1024)}MB limit"
+    
+    return True, ""
+
+@router.post("", response_model=AttachmentResponse, status_code=status.HTTP_201_CREATED)
+async def upload_attachment(
+    task_id: str,
+    file: UploadFile = File(...),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Upload file attachment to a task
+    - Any authenticated user can upload to any task (since all tasks are visible)
+    """
+    db = get_database()
+    
+    # Verify task exists
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # Read file content to get size
+    file_content = await file.read()
+    file_size = len(file_content)
+    
+    # Validate file
+    is_valid, error_msg = validate_file(file.filename, file_size)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg
+        )
+    
+    # Generate unique filename
+    file_ext = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    # Save file
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    
+    # Create attachment document
+    attachment = AttachmentInDB(
+        id=str(uuid.uuid4()),
+        task_id=task_id,
+        uploaded_by=current_user.id,
+        uploaded_by_name=current_user.full_name,
+        uploaded_by_email=current_user.email,
+        file_name=file.filename,
+        file_type=file_ext.lstrip('.'),
+        file_size=file_size,
+        file_path=file_path
+    )
+    
+    # Save to database
+    attachment_dict = attachment.model_dump()
+    attachment_dict["uploaded_at"] = attachment_dict["uploaded_at"].isoformat()
+    
+    await db.attachments.insert_one(attachment_dict)
+    
+    # Notify task participants (assigned user and creator)
+    participants = set([task["assigned_to"], task["created_by"]])
+    participants.discard(current_user.id)  # Don't notify the uploader
+    
+    for participant_id in participants:
+        await create_notification(
+            user_id=participant_id,
+            notification_type="file_uploaded",
+            message=f"{current_user.full_name} uploaded a file to task: '{task['title']}'",
+            related_task_id=task_id
+        )
+    
+    # Log audit
+    await log_audit(
+        action_type="file_uploaded",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=task_id,
+        metadata={
+            "task_title": task["title"],
+            "file_name": file.filename,
+            "file_size": file_size
+        }
+    )
+    
+    return AttachmentResponse(**attachment.model_dump())
+
+@router.get("/task/{task_id}", response_model=List[AttachmentResponse])
+async def list_task_attachments(
+    task_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    List all attachments for a specific task
+    - All authenticated users can view attachments (since all tasks are visible)
+    """
+    db = get_database()
+    
+    # Verify task exists
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # Fetch attachments
+    attachments = await db.attachments.find(
+        {"task_id": task_id},
+        {"_id": 0}
+    ).sort("uploaded_at", -1).to_list(100)
+    
+    # Convert datetime strings
+    for attachment in attachments:
+        if isinstance(attachment.get('uploaded_at'), str):
+            attachment['uploaded_at'] = datetime.fromisoformat(attachment['uploaded_at'])
+    
+    return [AttachmentResponse(**attachment) for attachment in attachments]
+
+@router.get("/{attachment_id}/download")
+async def download_attachment(
+    attachment_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Download an attachment
+    - Any authenticated user can download attachments (since all tasks are visible)
+    """
+    db = get_database()
+    
+    # Get attachment
+    attachment = await db.attachments.find_one({"id": attachment_id}, {"_id": 0})
+    if not attachment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Attachment not found"
+        )
+    
+    # Check if file exists
+    if not os.path.exists(attachment["file_path"]):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found on server"
+        )
+    
+    return FileResponse(
+        path=attachment["file_path"],
+        filename=attachment["file_name"],
+        media_type="application/octet-stream"
+    )
+
+@router.delete("/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_attachment(
+    attachment_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Delete an attachment
+    - Only uploader or admin can delete
+    """
+    db = get_database()
+    
+    # Get attachment
+    attachment = await db.attachments.find_one({"id": attachment_id}, {"_id": 0})
+    if not attachment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Attachment not found"
+        )
+    
+    # Check authorization - only uploader or admin can delete
+    if attachment["uploaded_by"] != current_user.id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this attachment"
+        )
+    
+    # Delete file from filesystem
+    if os.path.exists(attachment["file_path"]):
+        os.remove(attachment["file_path"])
+    
+    # Delete from database
+    await db.attachments.delete_one({"id": attachment_id})
+    
+    return None
+
+================================================================================
+FILE: backend\app\api\routes\audit_logs.py
+================================================================================
+
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from typing import List, Optional
+from app.schemas.notification import AuditLogResponse
+from app.schemas.user import UserResponse
+from app.api.deps import get_current_user, require_role
+from app.services.audit_service import get_audit_logs
+
+router = APIRouter(prefix="/audit-logs", tags=["Audit Logs"])
+
+@router.get("", response_model=List[AuditLogResponse])
+async def list_audit_logs(
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of logs"),
+    action_type: Optional[str] = Query(None, description="Filter by action type"),
+    user_id: Optional[str] = Query(None, description="Filter by user"),
+    task_id: Optional[str] = Query(None, description="Filter by task"),
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Get audit logs (Admin and Manager only)
+    - Returns logs sorted by newest first
+    - Supports filtering by action_type, user_id, and task_id
+    """
+    logs = await get_audit_logs(
+        limit=limit,
+        action_type=action_type,
+        user_id=user_id,
+        task_id=task_id
+    )
+    
+    return [AuditLogResponse(**log) for log in logs]
+
+================================================================================
+FILE: backend\app\api\routes\auth.py
+================================================================================
+
+from fastapi import APIRouter, HTTPException, status, Depends
+from app.schemas.auth import LoginRequest, TokenResponse
+from app.core.security import verify_password, create_access_token, create_refresh_token
+from app.db.mongodb import get_database
+from app.schemas.user import UserResponse
+from app.api.deps import get_current_user
+from app.models.refresh_token import RefreshTokenInDB
+from datetime import datetime, timezone, timedelta
+from app.core.config import settings
+import uuid
+
+router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+@router.post("/login", response_model=TokenResponse)
+async def login(login_data: LoginRequest):
+    """
+    Login endpoint
+    - Validates email and password
+    - Returns access token, refresh token, and user data
+    """
+    db = get_database()
+    user = await db.users.find_one({"email": login_data.email})
+    
+    # Handle both old 'password' field and new 'hashed_password' field
+    password_field = user.get("hashed_password") or user.get("password") if user else None
+    
+    if not user or not password_field or not verify_password(login_data.password, password_field):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+    
+    if not user.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": user["id"], "role": user["role"]})
+    
+    # Create refresh token
+    refresh_token = create_refresh_token()
+    
+    # Store refresh token in database
+    refresh_token_doc = RefreshTokenInDB(
+        id=str(uuid.uuid4()),
+        user_id=user["id"],
+        token=refresh_token,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    
+    refresh_dict = refresh_token_doc.model_dump()
+    refresh_dict["created_at"] = refresh_dict["created_at"].isoformat()
+    refresh_dict["expires_at"] = refresh_dict["expires_at"].isoformat()
+    
+    await db.refresh_tokens.insert_one(refresh_dict)
+    
+    # Remove sensitive fields
+    user.pop("_id", None)
+    user.pop("hashed_password", None)
+    user.pop("password", None)
+    
+    # Convert datetime strings and add defaults if missing
+    if isinstance(user.get('created_at'), str):
+        user['created_at'] = datetime.fromisoformat(user['created_at'])
+    elif 'created_at' not in user:
+        user['created_at'] = datetime.now(timezone.utc)
+    
+    if isinstance(user.get('updated_at'), str):
+        user['updated_at'] = datetime.fromisoformat(user['updated_at'])
+    elif 'updated_at' not in user:
+        user['updated_at'] = datetime.now(timezone.utc)
+    
+    # Ensure is_active exists
+    if 'is_active' not in user:
+        user['is_active'] = True
+    
+    user_response = UserResponse(**user)
+    
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        refresh_token=refresh_token,
+        user=user_response.model_dump()
+    )
+
+@router.post("/refresh")
+async def refresh_access_token(refresh_token: str):
+    """
+    Refresh token endpoint
+    - Validates refresh token
+    - Issues new access token
+    """
+    db = get_database()
+    
+    # Find refresh token
+    token_doc = await db.refresh_tokens.find_one({"token": refresh_token}, {"_id": 0})
+    
+    if not token_doc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token"
+        )
+    
+    # Check if revoked
+    if token_doc.get("is_revoked"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has been revoked"
+        )
+    
+    # Check if expired
+    expires_at = token_doc.get("expires_at")
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    
+    if datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has expired"
+        )
+    
+    # Get user
+    user = await db.users.find_one({"id": token_doc["user_id"]}, {"_id": 0})
+    
+    if not user or not user.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive"
+        )
+    
+    # Create new access token
+    new_access_token = create_access_token(data={"sub": user["id"], "role": user["role"]})
+    
+    return {
+        "access_token": new_access_token,
+        "token_type": "bearer"
+    }
+
+@router.post("/logout")
+async def logout(refresh_token: str, current_user: UserResponse = Depends(get_current_user)):
+    """
+    Logout endpoint
+    - Revokes refresh token
+    """
+    db = get_database()
+    
+    await db.refresh_tokens.update_one(
+        {"token": refresh_token, "user_id": current_user.id},
+        {"$set": {"is_revoked": True}}
+    )
+    
+    return {"message": "Logged out successfully"}
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(current_user: UserResponse = Depends(get_current_user)):
+    """
+    Get current authenticated user information
+    """
+    return current_user
+
+================================================================================
+FILE: backend\app\api\routes\chat.py
+================================================================================
+
+"""
+Chat API Routes - Direct Messages and Group Chats
+With pinning and search features
+"""
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Query
+from typing import List, Optional
+from app.schemas.chat import (
+    ConversationCreate, ConversationResponse, ConversationUpdate,
+    MessageCreate, MessageResponse, ChatAttachmentResponse,
+    TypingIndicator, ReadReceipt, PinConversation, PinMessage, MessageSearchResponse
+)
+from app.models.chat import ConversationInDB, MessageInDB, ChatAttachmentInDB
+from app.schemas.user import UserResponse
+from app.db.mongodb import get_database
+from app.api.deps import get_current_user
+from app.services.websocket_manager import manager
+import uuid
+import os
+import aiofiles
+import re
+from datetime import datetime, timezone
+
+router = APIRouter(prefix="/chat", tags=["Chat"])
+
+# Allowed file types for chat attachments
+ALLOWED_EXTENSIONS = {'.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+UPLOAD_DIR = "/app/backend/uploads/chat"
+
+# Ensure upload directory exists
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+@router.post("/conversations", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)
+async def create_conversation(
+    conv_data: ConversationCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Create a new conversation (DM or Group)
+    - Everyone can create conversations
+    - For DM: participant_ids should have 1 user ID
+    - For Group: participant_ids should have 2+ user IDs, name is required
+    """
+    db = get_database()
+    
+    # Validate participants
+    if not conv_data.participant_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one participant is required"
+        )
+    
+    # Add current user to participants
+    all_participants = list(set(conv_data.participant_ids + [current_user.id]))
+    
+    if conv_data.is_group:
+        if len(all_participants) < 3:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Group chat requires at least 3 participants"
+            )
+        if not conv_data.name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Group name is required"
+            )
+    else:
+        # For DM, check if conversation already exists
+        if len(all_participants) != 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Direct message must have exactly 2 participants"
+            )
+        
+        existing_conv = await db.conversations.find_one({
+            "is_group": False,
+            "participants": {"$all": all_participants, "$size": 2}
+        }, {"_id": 0})
+        
+        if existing_conv:
+            # Return existing conversation
+            if isinstance(existing_conv.get('created_at'), str):
+                existing_conv['created_at'] = datetime.fromisoformat(existing_conv['created_at'])
+            if isinstance(existing_conv.get('updated_at'), str):
+                existing_conv['updated_at'] = datetime.fromisoformat(existing_conv['updated_at'])
+            if isinstance(existing_conv.get('last_message_at'), str):
+                existing_conv['last_message_at'] = datetime.fromisoformat(existing_conv['last_message_at'])
+            return ConversationResponse(**existing_conv, unread_count=0)
+    
+    # Fetch participant names
+    users = await db.users.find(
+        {"id": {"$in": all_participants}},
+        {"_id": 0, "id": 1, "full_name": 1}
+    ).to_list(100)
+    
+    user_names = {u["id"]: u["full_name"] for u in users}
+    participant_names = [user_names.get(pid, "Unknown") for pid in all_participants]
+    
+    # Create conversation
+    conversation = ConversationInDB(
+        id=str(uuid.uuid4()),
+        name=conv_data.name,
+        is_group=conv_data.is_group,
+        participants=all_participants,
+        participant_names=participant_names,
+        created_by=current_user.id
+    )
+    
+    conv_dict = conversation.model_dump()
+    conv_dict["created_at"] = conv_dict["created_at"].isoformat()
+    conv_dict["updated_at"] = conv_dict["updated_at"].isoformat()
+    
+    await db.conversations.insert_one(conv_dict)
+    
+    return ConversationResponse(
+        **conversation.model_dump(),
+        unread_count=0
+    )
+
+
+@router.get("/conversations", response_model=List[ConversationResponse])
+async def list_conversations(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """List all conversations for current user"""
+    db = get_database()
+    
+    conversations = await db.conversations.find(
+        {"participants": current_user.id},
+        {"_id": 0}
+    ).sort("updated_at", -1).to_list(100)
+    
+    result = []
+    for conv in conversations:
+        # Convert datetime strings
+        if isinstance(conv.get('created_at'), str):
+            conv['created_at'] = datetime.fromisoformat(conv['created_at'])
+        if isinstance(conv.get('updated_at'), str):
+            conv['updated_at'] = datetime.fromisoformat(conv['updated_at'])
+        if isinstance(conv.get('last_message_at'), str):
+            conv['last_message_at'] = datetime.fromisoformat(conv['last_message_at'])
+        
+        # Count unread messages
+        unread_count = await db.messages.count_documents({
+            "conversation_id": conv["id"],
+            "sender_id": {"$ne": current_user.id},
+            "read_by": {"$nin": [current_user.id]}
+        })
+        
+        # Check if current user has pinned this conversation
+        is_pinned = current_user.id in conv.get("pinned_by", [])
+        
+        result.append(ConversationResponse(**conv, unread_count=unread_count, is_pinned=is_pinned))
+    
+    # Sort: pinned first, then by updated_at
+    result.sort(key=lambda x: (not x.is_pinned, x.updated_at), reverse=True)
+    
+    return result
+
+
+@router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
+async def get_conversation(
+    conversation_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get conversation by ID"""
+    db = get_database()
+    
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    # Convert datetime strings
+    if isinstance(conv.get('created_at'), str):
+        conv['created_at'] = datetime.fromisoformat(conv['created_at'])
+    if isinstance(conv.get('updated_at'), str):
+        conv['updated_at'] = datetime.fromisoformat(conv['updated_at'])
+    if isinstance(conv.get('last_message_at'), str):
+        conv['last_message_at'] = datetime.fromisoformat(conv['last_message_at'])
+    
+    # Count unread messages
+    unread_count = await db.messages.count_documents({
+        "conversation_id": conversation_id,
+        "sender_id": {"$ne": current_user.id},
+        "read_by": {"$nin": [current_user.id]}
+    })
+    
+    return ConversationResponse(**conv, unread_count=unread_count)
+
+
+@router.patch("/conversations/{conversation_id}", response_model=ConversationResponse)
+async def update_conversation(
+    conversation_id: str,
+    update_data: ConversationUpdate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Update conversation (groups only) - add/remove participants, change name"""
+    db = get_database()
+    
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    if not conv.get("is_group"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot update direct message conversations"
+        )
+    
+    updates = {}
+    
+    if update_data.name:
+        updates["name"] = update_data.name
+    
+    new_participants = conv["participants"]
+    new_names = conv.get("participant_names", [])
+    
+    if update_data.add_participants:
+        # Fetch new participant names
+        new_users = await db.users.find(
+            {"id": {"$in": update_data.add_participants}},
+            {"_id": 0, "id": 1, "full_name": 1}
+        ).to_list(100)
+        
+        for user in new_users:
+            if user["id"] not in new_participants:
+                new_participants.append(user["id"])
+                new_names.append(user["full_name"])
+    
+    if update_data.remove_participants:
+        # Don't allow removing all participants or the creator
+        for pid in update_data.remove_participants:
+            if pid != conv["created_by"] and pid in new_participants:
+                idx = new_participants.index(pid)
+                new_participants.pop(idx)
+                if idx < len(new_names):
+                    new_names.pop(idx)
+    
+    if len(new_participants) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Group must have at least 2 participants"
+        )
+    
+    updates["participants"] = new_participants
+    updates["participant_names"] = new_names
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.conversations.update_one(
+        {"id": conversation_id},
+        {"$set": updates}
+    )
+    
+    # Fetch updated conversation
+    updated_conv = await db.conversations.find_one({"id": conversation_id}, {"_id": 0})
+    
+    if isinstance(updated_conv.get('created_at'), str):
+        updated_conv['created_at'] = datetime.fromisoformat(updated_conv['created_at'])
+    if isinstance(updated_conv.get('updated_at'), str):
+        updated_conv['updated_at'] = datetime.fromisoformat(updated_conv['updated_at'])
+    if isinstance(updated_conv.get('last_message_at'), str):
+        updated_conv['last_message_at'] = datetime.fromisoformat(updated_conv['last_message_at'])
+    
+    return ConversationResponse(**updated_conv, unread_count=0)
+
+
+@router.post("/conversations/{conversation_id}/messages", response_model=MessageResponse)
+async def send_message(
+    conversation_id: str,
+    message_data: MessageCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Send a message to a conversation"""
+    db = get_database()
+    
+    # Verify conversation exists and user is participant
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    # If attachment message, verify attachment exists
+    attachment_name = None
+    attachment_type = None
+    if message_data.message_type == "attachment" and message_data.attachment_id:
+        attachment = await db.chat_attachments.find_one(
+            {"id": message_data.attachment_id},
+            {"_id": 0}
+        )
+        if attachment:
+            attachment_name = attachment.get("file_name")
+            attachment_type = attachment.get("file_type")
+    
+    # Create message
+    message = MessageInDB(
+        id=str(uuid.uuid4()),
+        conversation_id=conversation_id,
+        sender_id=current_user.id,
+        sender_name=current_user.full_name,
+        content=message_data.content,
+        message_type=message_data.message_type,
+        attachment_id=message_data.attachment_id,
+        attachment_name=attachment_name,
+        attachment_type=attachment_type,
+        read_by=[current_user.id]  # Sender has read it
+    )
+    
+    msg_dict = message.model_dump()
+    msg_dict["created_at"] = msg_dict["created_at"].isoformat()
+    
+    await db.messages.insert_one(msg_dict)
+    
+    # Update conversation last message
+    await db.conversations.update_one(
+        {"id": conversation_id},
+        {"$set": {
+            "last_message": message_data.content[:100],
+            "last_message_at": msg_dict["created_at"],
+            "updated_at": msg_dict["created_at"]
+        }}
+    )
+    
+    # Broadcast message via WebSocket to all participants
+    await manager.broadcast_chat_message(
+        conv["participants"],
+        {
+            "id": message.id,
+            "conversation_id": conversation_id,
+            "sender_id": current_user.id,
+            "sender_name": current_user.full_name,
+            "content": message_data.content,
+            "message_type": message_data.message_type,
+            "attachment_id": message_data.attachment_id,
+            "attachment_name": attachment_name,
+            "attachment_type": attachment_type,
+            "read_by": [current_user.id],
+            "created_at": msg_dict["created_at"]
+        }
+    )
+    
+    return MessageResponse(
+        **message.model_dump(),
+        is_own=True
+    )
+
+
+@router.get("/conversations/{conversation_id}/messages", response_model=List[MessageResponse])
+async def get_messages(
+    conversation_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    before: Optional[str] = None,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get messages from a conversation"""
+    db = get_database()
+    
+    # Verify conversation exists and user is participant
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    query = {"conversation_id": conversation_id}
+    if before:
+        # Get message timestamp for pagination
+        before_msg = await db.messages.find_one({"id": before}, {"_id": 0, "created_at": 1})
+        if before_msg:
+            query["created_at"] = {"$lt": before_msg["created_at"]}
+    
+    messages = await db.messages.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Reverse to get chronological order
+    messages.reverse()
+    
+    result = []
+    for msg in messages:
+        if isinstance(msg.get('created_at'), str):
+            msg['created_at'] = datetime.fromisoformat(msg['created_at'])
+        
+        result.append(MessageResponse(
+            **msg,
+            is_own=msg["sender_id"] == current_user.id
+        ))
+    
+    return result
+
+
+@router.post("/conversations/{conversation_id}/read")
+async def mark_messages_read(
+    conversation_id: str,
+    read_data: ReadReceipt,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Mark messages as read"""
+    db = get_database()
+    
+    # Verify conversation
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    # Update messages
+    await db.messages.update_many(
+        {
+            "id": {"$in": read_data.message_ids},
+            "conversation_id": conversation_id
+        },
+        {"$addToSet": {"read_by": current_user.id}}
+    )
+    
+    # Broadcast read receipt via WebSocket
+    await manager.broadcast_read_receipt(
+        conversation_id,
+        current_user.id,
+        read_data.message_ids,
+        conv["participants"]
+    )
+    
+    return {"message": "Messages marked as read"}
+
+
+@router.post("/conversations/{conversation_id}/typing")
+async def typing_indicator(
+    conversation_id: str,
+    typing_data: TypingIndicator,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Send typing indicator"""
+    db = get_database()
+    
+    # Verify conversation
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    # Broadcast typing indicator
+    await manager.broadcast_typing(
+        conversation_id,
+        current_user.id,
+        current_user.full_name,
+        conv["participants"],
+        typing_data.is_typing
+    )
+    
+    return {"message": "Typing indicator sent"}
+
+
+@router.post("/conversations/{conversation_id}/attachments", response_model=ChatAttachmentResponse)
+async def upload_chat_attachment(
+    conversation_id: str,
+    file: UploadFile = File(...),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Upload attachment for chat"""
+    db = get_database()
+    
+    # Verify conversation
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    # Validate file
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File type not allowed. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+    
+    # Read file and check size
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size exceeds 10MB limit"
+        )
+    
+    # Generate unique filename
+    attachment_id = str(uuid.uuid4())
+    safe_filename = f"{attachment_id}{file_ext}"
+    file_path = os.path.join(UPLOAD_DIR, safe_filename)
+    
+    # Save file
+    async with aiofiles.open(file_path, 'wb') as f:
+        await f.write(content)
+    
+    # Create attachment record
+    attachment = ChatAttachmentInDB(
+        id=attachment_id,
+        conversation_id=conversation_id,
+        message_id="",  # Will be set when message is sent
+        uploaded_by=current_user.id,
+        uploaded_by_name=current_user.full_name,
+        file_name=file.filename,
+        file_type=file_ext,
+        file_size=len(content),
+        file_path=file_path
+    )
+    
+    att_dict = attachment.model_dump()
+    att_dict["uploaded_at"] = att_dict["uploaded_at"].isoformat()
+    
+    await db.chat_attachments.insert_one(att_dict)
+    
+    return ChatAttachmentResponse(**attachment.model_dump())
+
+
+@router.get("/attachments/{attachment_id}/download")
+async def download_chat_attachment(
+    attachment_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Download chat attachment"""
+    from fastapi.responses import FileResponse
+    
+    db = get_database()
+    
+    attachment = await db.chat_attachments.find_one(
+        {"id": attachment_id},
+        {"_id": 0}
+    )
+    
+    if not attachment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Attachment not found"
+        )
+    
+    # Verify user is participant of conversation
+    conv = await db.conversations.find_one(
+        {"id": attachment["conversation_id"], "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this attachment"
+        )
+    
+    if not os.path.exists(attachment["file_path"]):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found"
+        )
+    
+    return FileResponse(
+        attachment["file_path"],
+        filename=attachment["file_name"],
+        media_type="application/octet-stream"
+    )
+
+
+@router.get("/users/available", response_model=List[dict])
+async def get_available_users_for_chat(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get list of users available for chat (excluding current user)"""
+    db = get_database()
+    
+    users = await db.users.find(
+        {"id": {"$ne": current_user.id}, "is_active": True},
+        {"_id": 0, "id": 1, "full_name": 1, "email": 1, "role": 1}
+    ).to_list(100)
+    
+    return users
+
+
+# ============================================
+# PIN AND SEARCH ENDPOINTS
+# ============================================
+
+@router.post("/conversations/{conversation_id}/pin")
+async def pin_conversation(
+    conversation_id: str,
+    pin_data: PinConversation,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Pin or unpin a conversation for the current user"""
+    db = get_database()
+    
+    # Verify conversation exists and user is participant
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    if pin_data.pin:
+        # Pin: add user to pinned_by list
+        await db.conversations.update_one(
+            {"id": conversation_id},
+            {"$addToSet": {"pinned_by": current_user.id}}
+        )
+        return {"message": "Conversation pinned", "is_pinned": True}
+    else:
+        # Unpin: remove user from pinned_by list
+        await db.conversations.update_one(
+            {"id": conversation_id},
+            {"$pull": {"pinned_by": current_user.id}}
+        )
+        return {"message": "Conversation unpinned", "is_pinned": False}
+
+
+@router.post("/conversations/{conversation_id}/messages/{message_id}/pin")
+async def pin_message(
+    conversation_id: str,
+    message_id: str,
+    pin_data: PinMessage,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Pin or unpin a message in a conversation"""
+    db = get_database()
+    
+    # Verify conversation exists and user is participant
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    # Verify message exists
+    message = await db.messages.find_one(
+        {"id": message_id, "conversation_id": conversation_id},
+        {"_id": 0}
+    )
+    
+    if not message:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Message not found"
+        )
+    
+    if pin_data.pin:
+        # Pin message
+        await db.messages.update_one(
+            {"id": message_id},
+            {"$set": {
+                "is_pinned": True,
+                "pinned_by": current_user.id,
+                "pinned_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"message": "Message pinned", "is_pinned": True}
+    else:
+        # Unpin message
+        await db.messages.update_one(
+            {"id": message_id},
+            {"$set": {
+                "is_pinned": False,
+                "pinned_by": None,
+                "pinned_at": None
+            }}
+        )
+        return {"message": "Message unpinned", "is_pinned": False}
+
+
+@router.get("/conversations/{conversation_id}/pinned-messages", response_model=List[MessageResponse])
+async def get_pinned_messages(
+    conversation_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get all pinned messages in a conversation"""
+    db = get_database()
+    
+    # Verify conversation
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+    
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    messages = await db.messages.find(
+        {"conversation_id": conversation_id, "is_pinned": True},
+        {"_id": 0}
+    ).sort("pinned_at", -1).to_list(100)
+    
+    result = []
+    for msg in messages:
+        if isinstance(msg.get('created_at'), str):
+            msg['created_at'] = datetime.fromisoformat(msg['created_at'])
+        if isinstance(msg.get('pinned_at'), str):
+            msg['pinned_at'] = datetime.fromisoformat(msg['pinned_at'])
+        
+        result.append(MessageResponse(
+            **msg,
+            is_own=msg["sender_id"] == current_user.id
+        ))
+    
+    return result
+
+
+@router.get("/search", response_model=List[MessageSearchResponse])
+async def search_messages(
+    q: str = Query(..., min_length=1, description="Search query"),
+    conversation_id: Optional[str] = Query(None, description="Filter by conversation"),
+    limit: int = Query(50, ge=1, le=100),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Search messages across all conversations or within a specific conversation
+    - Searches in message content
+    - Only returns messages from conversations user participates in
+    """
+    db = get_database()
+    
+    # Get all conversations user participates in
+    user_convs = await db.conversations.find(
+        {"participants": current_user.id},
+        {"_id": 0, "id": 1, "name": 1, "is_group": 1, "participant_names": 1, "participants": 1}
+    ).to_list(100)
+    
+    conv_ids = [c["id"] for c in user_convs]
+    conv_map = {c["id"]: c for c in user_convs}
+    
+    if not conv_ids:
+        return []
+    
+    # Build search query
+    query = {
+        "conversation_id": {"$in": conv_ids},
+        "content": {"$regex": re.escape(q), "$options": "i"}
+    }
+    
+    if conversation_id:
+        if conversation_id not in conv_ids:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+        query["conversation_id"] = conversation_id
+    
+    messages = await db.messages.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    result = []
+    for msg in messages:
+        if isinstance(msg.get('created_at'), str):
+            msg['created_at'] = datetime.fromisoformat(msg['created_at'])
+        
+        conv = conv_map.get(msg["conversation_id"], {})
+        
+        # Get conversation name
+        if conv.get("is_group"):
+            conv_name = conv.get("name", "Group")
+        else:
+            # For DM, get the other participant's name
+            other_idx = next((i for i, pid in enumerate(conv.get("participants", [])) if pid != current_user.id), 0)
+            conv_name = conv.get("participant_names", ["Unknown"])[other_idx] if other_idx < len(conv.get("participant_names", [])) else "Unknown"
+        
+        result.append(MessageSearchResponse(
+            id=msg["id"],
+            conversation_id=msg["conversation_id"],
+            conversation_name=conv_name,
+            sender_id=msg["sender_id"],
+            sender_name=msg["sender_name"],
+            content=msg["content"],
+            created_at=msg["created_at"],
+            is_pinned=msg.get("is_pinned", False)
+        ))
+    
+    return result
+
+================================================================================
+FILE: backend\app\api\routes\comments.py
+================================================================================
+
+from fastapi import APIRouter, HTTPException, status, Depends
+from typing import List
+from app.schemas.comment import CommentCreate, CommentResponse, CommentUpdate
+from app.models.comment import CommentInDB
+from app.schemas.user import UserResponse
+from app.db.mongodb import get_database
+from app.api.deps import get_current_user
+from app.services.notification_service import create_notification
+from app.services.audit_service import log_audit
+from app.services.email_service import send_comment_notification_email
+import uuid
+from datetime import datetime, timezone
+
+router = APIRouter(prefix="/comments", tags=["Comments"])
+
+@router.post("", response_model=CommentResponse, status_code=status.HTTP_201_CREATED)
+async def create_comment(
+    comment_data: CommentCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Create a comment on a task
+    - Any authenticated user can comment on any task (since all tasks are visible)
+    - Comments are linked to task and user
+    """
+    db = get_database()
+    
+    # Verify task exists
+    task = await db.tasks.find_one({"id": comment_data.task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # Create comment document
+    comment_in_db = CommentInDB(
+        id=str(uuid.uuid4()),
+        task_id=comment_data.task_id,
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        content=comment_data.content
+    )
+    
+    # Convert to dict and serialize datetime
+    comment_dict = comment_in_db.model_dump()
+    comment_dict["created_at"] = comment_dict["created_at"].isoformat()
+    comment_dict["updated_at"] = comment_dict["updated_at"].isoformat()
+    
+    await db.comments.insert_one(comment_dict)
+    
+    # Notify task participants (assigned user and creator)
+    participants = set([task["assigned_to"], task["created_by"]])
+    participants.discard(current_user.id)  # Don't notify the commenter
+    
+    for participant_id in participants:
+        await create_notification(
+            user_id=participant_id,
+            notification_type="comment_added",
+            message=f"{current_user.full_name} commented on task: '{task['title']}'",
+            related_task_id=comment_data.task_id
+        )
+        
+        # Send email notification
+        user = await db.users.find_one({"id": participant_id}, {"_id": 0})
+        if user:
+            send_comment_notification_email(
+                to_email=user["email"],
+                to_name=user["full_name"],
+                task_title=task["title"],
+                commenter_name=current_user.full_name,
+                comment_preview=comment_data.content
+            )
+    
+    # Log audit
+    await log_audit(
+        action_type="comment_added",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=comment_data.task_id,
+        metadata={
+            "task_title": task["title"],
+            "comment_length": len(comment_data.content)
+        }
+    )
+    
+    return CommentResponse(**comment_in_db.model_dump())
+
+@router.get("/task/{task_id}", response_model=List[CommentResponse])
+async def list_comments_by_task(
+    task_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    List all comments for a specific task
+    - Ordered by creation date (oldest first)
+    - All authenticated users can view comments (since all tasks are visible)
+    """
+    db = get_database()
+    
+    # Verify task exists
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # Fetch comments
+    comments = await db.comments.find(
+        {"task_id": task_id},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(1000)
+    
+    # Convert datetime strings
+    for comment in comments:
+        if isinstance(comment.get('created_at'), str):
+            comment['created_at'] = datetime.fromisoformat(comment['created_at'])
+        if isinstance(comment.get('updated_at'), str):
+            comment['updated_at'] = datetime.fromisoformat(comment['updated_at'])
+    
+    return [CommentResponse(**comment) for comment in comments]
+
+@router.get("/{comment_id}", response_model=CommentResponse)
+async def get_comment(
+    comment_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get a specific comment by ID
+    """
+    db = get_database()
+    comment = await db.comments.find_one({"id": comment_id}, {"_id": 0})
+    
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comment not found"
+        )
+    
+    # Convert datetime strings
+    if isinstance(comment.get('created_at'), str):
+        comment['created_at'] = datetime.fromisoformat(comment['created_at'])
+    if isinstance(comment.get('updated_at'), str):
+        comment['updated_at'] = datetime.fromisoformat(comment['updated_at'])
+    
+    return CommentResponse(**comment)
+
+@router.patch("/{comment_id}", response_model=CommentResponse)
+async def update_comment(
+    comment_id: str,
+    comment_update: CommentUpdate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Update a comment
+    - Only the comment author can update their comment
+    """
+    db = get_database()
+    comment = await db.comments.find_one({"id": comment_id}, {"_id": 0})
+    
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comment not found"
+        )
+    
+    # Only comment author can update
+    if comment["user_id"] != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this comment"
+        )
+    
+    update_data = {
+        "content": comment_update.content,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.comments.update_one({"id": comment_id}, {"$set": update_data})
+    
+    # Fetch updated comment
+    updated_comment = await db.comments.find_one({"id": comment_id}, {"_id": 0})
+    
+    # Convert datetime strings
+    if isinstance(updated_comment.get('created_at'), str):
+        updated_comment['created_at'] = datetime.fromisoformat(updated_comment['created_at'])
+    if isinstance(updated_comment.get('updated_at'), str):
+        updated_comment['updated_at'] = datetime.fromisoformat(updated_comment['updated_at'])
+    
+    return CommentResponse(**updated_comment)
+
+@router.delete("/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_comment(
+    comment_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Delete a comment
+    - Only the comment author or admin can delete
+    """
+    db = get_database()
+    comment = await db.comments.find_one({"id": comment_id}, {"_id": 0})
+    
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comment not found"
+        )
+    
+    # Only comment author or admin can delete
+    if comment["user_id"] != current_user.id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this comment"
+        )
+    
+    result = await db.comments.delete_one({"id": comment_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comment not found"
+        )
+    
+    return None
+
+================================================================================
+FILE: backend\app\api\routes\notifications.py
+================================================================================
+
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from typing import List
+from app.schemas.notification import NotificationResponse
+from app.schemas.user import UserResponse
+from app.api.deps import get_current_user
+from app.services.notification_service import (
+    get_user_notifications,
+    mark_notification_read,
+    mark_all_notifications_read
+)
+from datetime import datetime
+
+router = APIRouter(prefix="/notifications", tags=["Notifications"])
+
+@router.get("", response_model=List[NotificationResponse])
+async def list_notifications(
+    unread_only: bool = Query(False, description="Return only unread notifications"),
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of notifications"),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get notifications for current user
+    - Returns notifications sorted by newest first
+    - Can filter by unread only
+    """
+    notifications = await get_user_notifications(
+        user_id=current_user.id,
+        unread_only=unread_only,
+        limit=limit
+    )
+    
+    return [NotificationResponse(**notif) for notif in notifications]
+
+@router.get("/unread-count", response_model=dict)
+async def get_unread_count(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get count of unread notifications for current user
+    """
+    notifications = await get_user_notifications(
+        user_id=current_user.id,
+        unread_only=True,
+        limit=1000
+    )
+    
+    return {"unread_count": len(notifications)}
+
+@router.post("/mark-read/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_notification_as_read(
+    notification_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Mark a specific notification as read
+    """
+    success = await mark_notification_read(notification_id, current_user.id)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found or already read"
+        )
+    
+    return None
+
+@router.post("/mark-all-read", response_model=dict)
+async def mark_all_as_read(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Mark all notifications as read for current user
+    """
+    count = await mark_all_notifications_read(current_user.id)
+    
+    return {"marked_read_count": count}
+
+================================================================================
+FILE: backend\app\api\routes\reports.py
+================================================================================
+
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from typing import List, Optional
+from datetime import datetime, timezone
+from app.schemas.attachment import UserProductivity, TeamOverview
+from app.schemas.user import UserResponse
+from app.db.mongodb import get_database
+from app.api.deps import get_current_user, require_role
+from app.core.roles import REPORTS_ACCESS_ROLES, NON_ADMIN_ROLES
+
+router = APIRouter(prefix="/reports", tags=["Reports"])
+
+def calculate_productivity_score(
+    total_tasks: int,
+    completed: int,
+    completed_on_time: int,
+    overdue: int
+) -> float:
+    """
+    Calculate productivity score (0-100)
+    - 40% weight: completion rate
+    - 30% weight: on-time completion rate
+    - 30% weight: inverse overdue rate
+    """
+    if total_tasks == 0:
+        return 0.0
+    
+    completion_rate = (completed / total_tasks) * 100
+    on_time_rate = (completed_on_time / total_tasks) * 100 if total_tasks > 0 else 0
+    overdue_penalty = (overdue / total_tasks) * 100 if total_tasks > 0 else 0
+    
+    score = (
+        (completion_rate * 0.4) +
+        (on_time_rate * 0.3) +
+        ((100 - overdue_penalty) * 0.3)
+    )
+    
+    return round(min(max(score, 0), 100), 2)
+
+@router.get("/user-productivity", response_model=List[UserProductivity])
+async def get_user_productivity(
+    user_id: Optional[str] = Query(None, description="Filter by specific user (optional)"),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get productivity metrics for users
+    - Managers/Admins can view all users or specific user
+    - Other staff roles can only view their own stats
+    """
+    db = get_database()
+    
+    # Authorization check - non-admin/manager roles can only see their own stats
+    if current_user.role in NON_ADMIN_ROLES:
+        # Staff roles (team_member, sales, operations, marketing, accounts) can only view their own stats
+        target_user_id = current_user.id
+    else:
+        # Managers/Admins can view all or specific user
+        target_user_id = user_id if user_id else None
+    
+    # Build query
+    if target_user_id:
+        users = await db.users.find({"id": target_user_id}, {"_id": 0}).to_list(1)
+    else:
+        users = await db.users.find({}, {"_id": 0}).to_list(1000)
+    
+    if not users:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    productivity_stats = []
+    
+    for user in users:
+        user_id = user["id"]
+        
+        # Get all tasks assigned to this user
+        tasks = await db.tasks.find({"assigned_to": user_id}, {"_id": 0}).to_list(1000)
+        
+        total_tasks = len(tasks)
+        completed_tasks = [t for t in tasks if t["status"] == "completed"]
+        tasks_completed = len(completed_tasks)
+        
+        # Calculate on-time completion
+        tasks_completed_on_time = 0
+        total_completion_time = 0
+        
+        for task in completed_tasks:
+            # Check if task has completed_at field
+            completed_at = task.get("completed_at")
+            if completed_at:
+                if isinstance(completed_at, str):
+                    completed_at = datetime.fromisoformat(completed_at)
+                
+                # Parse due_date
+                try:
+                    due_date = datetime.fromisoformat(task["due_date"])
+                    if due_date.tzinfo is None:
+                        due_date = due_date.replace(tzinfo=timezone.utc)
+                except:
+                    # If due_date is just a date string, convert to datetime
+                    due_date = datetime.strptime(task["due_date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                
+                # Check if completed on time
+                if completed_at <= due_date:
+                    tasks_completed_on_time += 1
+                
+                # Calculate completion time
+                created_at = task.get("created_at")
+                if created_at:
+                    if isinstance(created_at, str):
+                        created_at = datetime.fromisoformat(created_at)
+                    completion_time = (completed_at - created_at).total_seconds() / 3600  # hours
+                    total_completion_time += completion_time
+        
+        # Calculate average completion time
+        average_completion_time = (
+            total_completion_time / tasks_completed if tasks_completed > 0 else 0
+        )
+        
+        # Calculate overdue tasks (not completed and past due date)
+        overdue_tasks = 0
+        current_time = datetime.now(timezone.utc)
+        
+        for task in tasks:
+            if task["status"] != "completed":
+                try:
+                    due_date = datetime.fromisoformat(task["due_date"])
+                    if due_date.tzinfo is None:
+                        due_date = due_date.replace(tzinfo=timezone.utc)
+                except:
+                    due_date = datetime.strptime(task["due_date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                
+                if current_time > due_date:
+                    overdue_tasks += 1
+        
+        # Calculate productivity score
+        productivity_score = calculate_productivity_score(
+            total_tasks,
+            tasks_completed,
+            tasks_completed_on_time,
+            overdue_tasks
+        )
+        
+        productivity_stats.append(UserProductivity(
+            user_id=user["id"],
+            user_name=user["full_name"],
+            user_email=user["email"],
+            total_tasks_assigned=total_tasks,
+            tasks_completed=tasks_completed,
+            tasks_completed_on_time=tasks_completed_on_time,
+            overdue_tasks=overdue_tasks,
+            average_completion_time_hours=round(average_completion_time, 2),
+            productivity_score=productivity_score
+        ))
+    
+    return productivity_stats
+
+@router.get("/team-overview", response_model=TeamOverview)
+async def get_team_overview(
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Get team-wide productivity overview
+    - Only Managers and Admins can access
+    """
+    db = get_database()
+    
+    # Get all users
+    users = await db.users.find({}, {"_id": 0}).to_list(1000)
+    total_users = len(users)
+    
+    # Get all tasks
+    tasks = await db.tasks.find({}, {"_id": 0}).to_list(10000)
+    total_tasks = len(tasks)
+    
+    # Calculate overall stats
+    completed_tasks = [t for t in tasks if t["status"] == "completed"]
+    total_completed = len(completed_tasks)
+    
+    # Calculate overdue tasks
+    overdue_tasks = 0
+    current_time = datetime.now(timezone.utc)
+    
+    for task in tasks:
+        if task["status"] != "completed":
+            try:
+                due_date = datetime.fromisoformat(task["due_date"])
+                if due_date.tzinfo is None:
+                    due_date = due_date.replace(tzinfo=timezone.utc)
+            except:
+                due_date = datetime.strptime(task["due_date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            
+            if current_time > due_date:
+                overdue_tasks += 1
+    
+    # Get user productivity stats
+    user_stats_response = await get_user_productivity(None, current_user)
+    
+    # Calculate average productivity score
+    if user_stats_response:
+        avg_score = sum(u.productivity_score for u in user_stats_response) / len(user_stats_response)
+    else:
+        avg_score = 0.0
+    
+    return TeamOverview(
+        total_users=total_users,
+        total_tasks=total_tasks,
+        total_completed=total_completed,
+        total_overdue=overdue_tasks,
+        average_productivity_score=round(avg_score, 2),
+        user_stats=user_stats_response
+    )
+
+================================================================================
+FILE: backend\app\api\routes\tasks.py
+================================================================================
+
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from typing import List
+from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate, BulkTaskUpdate, BulkTaskCancel, BulkTaskDelete, BulkOperationResponse
+from app.models.task import TaskInDB
+from app.schemas.user import UserResponse
+from app.db.mongodb import get_database
+from app.api.deps import get_current_user, require_role
+from app.core.roles import NON_ADMIN_ROLES, MANAGER_ROLES
+from app.services.notification_service import create_notification
+from app.services.audit_service import log_audit
+from app.services.email_service import send_task_assigned_email
+import uuid
+from datetime import datetime, timezone
+
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
+
+@router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+async def create_task(
+    task_data: TaskCreate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Create a new task (All authenticated users)
+    - Non-admin roles can assign to everyone except admins
+    - Admins and Managers can assign to anyone
+    - Validates assigned user exists
+    - Creates task in MongoDB
+    """
+    db = get_database()
+    
+    # Validate assigned user
+    assigned_user = await db.users.find_one({"id": task_data.assigned_to}, {"_id": 0})
+    if not assigned_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assigned user not found"
+        )
+    
+    # Non-admin roles cannot assign tasks to admins
+    if current_user.role in NON_ADMIN_ROLES and assigned_user.get("role") == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot assign tasks to admins"
+        )
+    
+    # Validate priority
+    valid_priorities = ["low", "medium", "high"]
+    if task_data.priority not in valid_priorities:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid priority. Must be one of: {', '.join(valid_priorities)}"
+        )
+    
+    # Create task document
+    task_in_db = TaskInDB(
+        id=str(uuid.uuid4()),
+        title=task_data.title,
+        description=task_data.description,
+        priority=task_data.priority,
+        status="todo",
+        assigned_to=task_data.assigned_to,
+        assigned_to_email=assigned_user["email"],
+        assigned_to_name=assigned_user["full_name"],
+        created_by=current_user.id,
+        created_by_name=current_user.full_name,
+        due_date=task_data.due_date
+    )
+    
+    # Convert to dict and serialize datetime
+    task_dict = task_in_db.model_dump()
+    task_dict["created_at"] = task_dict["created_at"].isoformat()
+    task_dict["updated_at"] = task_dict["updated_at"].isoformat()
+    
+    await db.tasks.insert_one(task_dict)
+    
+    # Create notification for assigned user
+    await create_notification(
+        user_id=task_data.assigned_to,
+        notification_type="task_assigned",
+        message=f"You have been assigned a new task: '{task_dict['title']}'",
+        related_task_id=task_in_db.id
+    )
+    
+    # Send email notification
+    send_task_assigned_email(
+        to_email=assigned_user["email"],
+        to_name=assigned_user["full_name"],
+        task_title=task_dict["title"],
+        task_due_date=task_dict["due_date"],
+        assigned_by=current_user.full_name
+    )
+    
+    # Log audit
+    await log_audit(
+        action_type="task_created",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=task_in_db.id,
+        metadata={
+            "task_title": task_dict["title"],
+            "assigned_to": assigned_user["full_name"],
+            "priority": task_dict["priority"]
+        }
+    )
+    
+    return TaskResponse(**task_in_db.model_dump())
+
+@router.get("", response_model=List[TaskResponse])
+async def list_tasks(
+    # Search parameters
+    search: str = Query(None, description="Search in title and description"),
+    # Filter parameters
+    status: str = Query(None, description="Filter by status: todo, in_progress, completed, cancelled"),
+    priority: str = Query(None, description="Filter by priority: low, medium, high"),
+    assigned_to: str = Query(None, description="Filter by assigned user ID"),
+    created_by: str = Query(None, description="Filter by creator user ID"),
+    # Date filters
+    due_date_from: str = Query(None, description="Due date from (YYYY-MM-DD)"),
+    due_date_to: str = Query(None, description="Due date to (YYYY-MM-DD)"),
+    created_from: str = Query(None, description="Created date from (YYYY-MM-DD)"),
+    created_to: str = Query(None, description="Created date to (YYYY-MM-DD)"),
+    # Overdue filter
+    overdue: bool = Query(None, description="Filter overdue tasks only"),
+    # Sorting
+    sort_by: str = Query("created_at", description="Sort by: created_at, due_date, priority, status, title"),
+    sort_order: str = Query("desc", description="Sort order: asc, desc"),
+    # Pagination
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
+    # Current user
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    List all tasks with search, filtering, sorting, and pagination.
+    All authenticated users can see all tasks.
+    
+    Filters:
+    - search: Search in title and description (case-insensitive)
+    - status: todo, in_progress, completed, cancelled
+    - priority: low, medium, high
+    - assigned_to: User ID
+    - created_by: User ID
+    - due_date_from/to: Date range for due date
+    - created_from/to: Date range for creation date
+    - overdue: true to show only overdue tasks
+    
+    Sorting:
+    - sort_by: created_at, due_date, priority, status, title
+    - sort_order: asc, desc
+    """
+    db = get_database()
+    
+    # Build query
+    query = {}
+    
+    # Text search (title and description)
+    if search:
+        query["$or"] = [
+            {"title": {"$regex": search, "$options": "i"}},
+            {"description": {"$regex": search, "$options": "i"}}
+        ]
+    
+    # Status filter
+    if status:
+        valid_statuses = ["todo", "in_progress", "completed", "cancelled"]
+        if status in valid_statuses:
+            query["status"] = status
+    
+    # Priority filter
+    if priority:
+        valid_priorities = ["low", "medium", "high"]
+        if priority in valid_priorities:
+            query["priority"] = priority
+    
+    # Assigned to filter
+    if assigned_to:
+        query["assigned_to"] = assigned_to
+    
+    # Created by filter
+    if created_by:
+        query["created_by"] = created_by
+    
+    # Due date range filter
+    if due_date_from or due_date_to:
+        query["due_date"] = {}
+        if due_date_from:
+            query["due_date"]["$gte"] = due_date_from
+        if due_date_to:
+            query["due_date"]["$lte"] = due_date_to
+    
+    # Created date range filter
+    if created_from or created_to:
+        created_filter = {}
+        if created_from:
+            created_filter["$gte"] = f"{created_from}T00:00:00"
+        if created_to:
+            created_filter["$lte"] = f"{created_to}T23:59:59"
+        query["created_at"] = created_filter
+    
+    # Overdue filter
+    if overdue:
+        current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        query["due_date"] = {"$lt": current_date}
+        query["status"] = {"$nin": ["completed", "cancelled"]}
+    
+    # Sorting
+    sort_direction = -1 if sort_order == "desc" else 1
+    sort_field = sort_by if sort_by in ["created_at", "due_date", "priority", "status", "title"] else "created_at"
+    
+    # Priority needs special handling for proper sorting
+    if sort_field == "priority":
+        # We'll sort in memory after fetching
+        tasks = await db.tasks.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+        priority_order = {"high": 0, "medium": 1, "low": 2}
+        tasks.sort(key=lambda x: priority_order.get(x.get("priority", "low"), 2), reverse=(sort_order == "desc"))
+    elif sort_field == "title":
+        # Title sorting needs case-insensitive collation
+        tasks = await db.tasks.find(query, {"_id": 0}).sort(sort_field, sort_direction).collation({'locale': 'en', 'strength': 2}).skip(skip).limit(limit).to_list(limit)
+    else:
+        tasks = await db.tasks.find(query, {"_id": 0}).sort(sort_field, sort_direction).skip(skip).limit(limit).to_list(limit)
+    
+    # Convert datetime strings
+    for task in tasks:
+        if isinstance(task.get('created_at'), str):
+            task['created_at'] = datetime.fromisoformat(task['created_at'])
+        elif 'created_at' not in task:
+            task['created_at'] = datetime.now(timezone.utc)
+        
+        if isinstance(task.get('updated_at'), str):
+            task['updated_at'] = datetime.fromisoformat(task['updated_at'])
+        elif 'updated_at' not in task:
+            task['updated_at'] = datetime.now(timezone.utc)
+    
+    return [TaskResponse(**task) for task in tasks]
+
+
+@router.get("/stats/summary")
+async def get_task_stats(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get task statistics summary for dashboard
+    Returns counts by status, priority, and overdue tasks
+    """
+    db = get_database()
+    
+    # Get all tasks
+    tasks = await db.tasks.find({}, {"_id": 0, "status": 1, "priority": 1, "due_date": 1, "assigned_to": 1}).to_list(10000)
+    
+    current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Calculate stats
+    stats = {
+        "total": len(tasks),
+        "by_status": {
+            "todo": 0,
+            "in_progress": 0,
+            "completed": 0,
+            "cancelled": 0
+        },
+        "by_priority": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+        },
+        "overdue": 0,
+        "my_tasks": 0,
+        "my_overdue": 0
+    }
+    
+    for task in tasks:
+        # By status
+        status = task.get("status", "todo")
+        if status in stats["by_status"]:
+            stats["by_status"][status] += 1
+        
+        # By priority
+        priority = task.get("priority", "medium")
+        if priority in stats["by_priority"]:
+            stats["by_priority"][priority] += 1
+        
+        # Overdue check
+        due_date = task.get("due_date", "")
+        is_overdue = due_date < current_date and status not in ["completed", "cancelled"]
+        if is_overdue:
+            stats["overdue"] += 1
+        
+        # My tasks
+        if task.get("assigned_to") == current_user.id:
+            stats["my_tasks"] += 1
+            if is_overdue:
+                stats["my_overdue"] += 1
+    
+    return stats
+
+
+@router.get("/{task_id}", response_model=TaskResponse)
+async def get_task(
+    task_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Get task by ID - All users can view any task
+    """
+    db = get_database()
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # Convert datetime strings
+    if isinstance(task.get('created_at'), str):
+        task['created_at'] = datetime.fromisoformat(task['created_at'])
+    elif 'created_at' not in task:
+        task['created_at'] = datetime.now(timezone.utc)
+    
+    if isinstance(task.get('updated_at'), str):
+        task['updated_at'] = datetime.fromisoformat(task['updated_at'])
+    elif 'updated_at' not in task:
+        task['updated_at'] = datetime.now(timezone.utc)
+    
+    return TaskResponse(**task)
+
+@router.patch("/{task_id}", response_model=TaskResponse)
+async def update_task(
+    task_id: str,
+    task_update: TaskUpdate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Update task
+    - Team members can only update status of their own tasks
+    - Admins and Managers can update all fields
+    """
+    db = get_database()
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # Authorization checks
+    if current_user.role == "team_member":
+        if task["assigned_to"] != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to update this task"
+            )
+        # Team members can only update status
+        update_data = {"status": task_update.status} if task_update.status else {}
+    else:
+        # Admins and Managers can update all fields
+        update_data = task_update.model_dump(exclude_unset=True)
+        
+        # If assigned_to is being updated, fetch new user details and log reassignment
+        if "assigned_to" in update_data and update_data["assigned_to"] != task.get("assigned_to"):
+            assigned_user = await db.users.find_one({"id": update_data["assigned_to"]}, {"_id": 0})
+            if not assigned_user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Assigned user not found"
+                )
+            
+            old_assignee = task.get("assigned_to_name", "Unassigned")
+            new_assignee = assigned_user["full_name"]
+            
+            update_data["assigned_to_email"] = assigned_user["email"]
+            update_data["assigned_to_name"] = new_assignee
+            
+            # Log task reassignment audit
+            await log_audit(
+                action_type="task_reassigned",
+                user_id=current_user.id,
+                user_name=current_user.full_name,
+                user_email=current_user.email,
+                task_id=task_id,
+                metadata={
+                    "task_title": task["title"],
+                    "old_assignee": old_assignee,
+                    "new_assignee": new_assignee,
+                    "new_assignee_email": assigned_user["email"]
+                }
+            )
+            
+            # Create notification for new assignee
+            await create_notification(
+                user_id=update_data["assigned_to"],
+                notification_type="task_assigned",
+                message=f"Task '{task['title']}' has been reassigned to you by {current_user.full_name}",
+                related_task_id=task_id
+            )
+    
+    if not update_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update"
+        )
+    
+    # Validate status if provided
+    if "status" in update_data:
+        valid_statuses = ["todo", "in_progress", "completed", "cancelled"]
+        if update_data["status"] not in valid_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
+        
+        # Add completed_at timestamp when task is marked as completed
+        if update_data["status"] == "completed" and task.get("status") != "completed":
+            update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Create notification for status change
+        if task.get("status") != update_data["status"]:
+            # Notify assigned user if status changed by manager/admin
+            if current_user.role != "team_member":
+                await create_notification(
+                    user_id=task["assigned_to"],
+                    notification_type="status_changed",
+                    message=f"Task '{task['title']}' status changed to: {update_data['status'].replace('_', ' ')}",
+                    related_task_id=task_id
+                )
+            
+            # Log status change audit
+            await log_audit(
+                action_type="status_changed",
+                user_id=current_user.id,
+                user_name=current_user.full_name,
+                user_email=current_user.email,
+                task_id=task_id,
+                metadata={
+                    "old_status": task.get("status"),
+                    "new_status": update_data["status"],
+                    "task_title": task["title"]
+                }
+            )
+    
+    # Update timestamp
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.tasks.update_one({"id": task_id}, {"$set": update_data})
+    
+    # Fetch updated task
+    updated_task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    
+    # Convert datetime strings
+    if isinstance(updated_task.get('created_at'), str):
+        updated_task['created_at'] = datetime.fromisoformat(updated_task['created_at'])
+    elif 'created_at' not in updated_task:
+        updated_task['created_at'] = datetime.now(timezone.utc)
+    
+    if isinstance(updated_task.get('updated_at'), str):
+        updated_task['updated_at'] = datetime.fromisoformat(updated_task['updated_at'])
+    elif 'updated_at' not in updated_task:
+        updated_task['updated_at'] = datetime.now(timezone.utc)
+    
+    return TaskResponse(**updated_task)
+
+@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_task(
+    task_id: str,
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    DEPRECATED: Tasks should not be deleted
+    Use PATCH to update status to 'cancelled' instead
+    This endpoint is disabled for data integrity
+    """
+    raise HTTPException(
+        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        detail="Task deletion is not allowed. Use status update to 'cancelled' instead."
+    )
+
+@router.patch("/{task_id}/cancel", response_model=TaskResponse)
+async def cancel_task(
+    task_id: str,
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Cancel a task (Admin and Manager only)
+    - Sets status to 'cancelled'
+    - Task remains in database but excluded from active workflows
+    """
+    db = get_database()
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    old_status = task.get("status")
+    
+    await db.tasks.update_one(
+        {"id": task_id},
+        {"$set": {
+            "status": "cancelled",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Log audit
+    await log_audit(
+        action_type="task_cancelled",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=task_id,
+        metadata={
+            "task_title": task["title"],
+            "old_status": old_status,
+            "new_status": "cancelled"
+        }
+    )
+    
+    # Fetch updated task
+    updated_task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    
+    if isinstance(updated_task.get('created_at'), str):
+        updated_task['created_at'] = datetime.fromisoformat(updated_task['created_at'])
+    elif 'created_at' not in updated_task:
+        updated_task['created_at'] = datetime.now(timezone.utc)
+    
+    if isinstance(updated_task.get('updated_at'), str):
+        updated_task['updated_at'] = datetime.fromisoformat(updated_task['updated_at'])
+    elif 'updated_at' not in updated_task:
+        updated_task['updated_at'] = datetime.now(timezone.utc)
+    
+    return TaskResponse(**updated_task)
+
+
+
+# ==================== BULK OPERATIONS (Admin/Manager Only) ====================
+
+@router.post("/bulk/update", response_model=BulkOperationResponse)
+async def bulk_update_tasks(
+    bulk_data: BulkTaskUpdate,
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Bulk update multiple tasks (Admin and Manager only)
+    - Can update status, priority, or assigned_to
+    - At least one update field must be provided
+    """
+    db = get_database()
+    
+    if not bulk_data.task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No task IDs provided"
+        )
+    
+    # Build update document
+    update_fields = {}
+    
+    if bulk_data.status:
+        valid_statuses = ["todo", "in_progress", "completed", "cancelled"]
+        if bulk_data.status not in valid_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
+        update_fields["status"] = bulk_data.status
+    
+    if bulk_data.priority:
+        valid_priorities = ["low", "medium", "high"]
+        if bulk_data.priority not in valid_priorities:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid priority. Must be one of: {', '.join(valid_priorities)}"
+            )
+        update_fields["priority"] = bulk_data.priority
+    
+    if bulk_data.assigned_to:
+        assigned_user = await db.users.find_one({"id": bulk_data.assigned_to}, {"_id": 0})
+        if not assigned_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assigned user not found"
+            )
+        update_fields["assigned_to"] = bulk_data.assigned_to
+        update_fields["assigned_to_email"] = assigned_user["email"]
+        update_fields["assigned_to_name"] = assigned_user["full_name"]
+    
+    if not update_fields:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No update fields provided"
+        )
+    
+    update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Perform bulk update
+    result = await db.tasks.update_many(
+        {"id": {"$in": bulk_data.task_ids}},
+        {"$set": update_fields}
+    )
+    
+    # Log audit for bulk operation
+    await log_audit(
+        action_type="bulk_task_update",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=None,
+        metadata={
+            "task_count": result.modified_count,
+            "task_ids": bulk_data.task_ids,
+            "update_fields": list(update_fields.keys())
+        }
+    )
+    
+    return BulkOperationResponse(
+        success=True,
+        updated_count=result.modified_count,
+        failed_count=len(bulk_data.task_ids) - result.modified_count,
+        message=f"Successfully updated {result.modified_count} tasks"
+    )
+
+
+@router.post("/bulk/cancel", response_model=BulkOperationResponse)
+async def bulk_cancel_tasks(
+    bulk_data: BulkTaskCancel,
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Bulk cancel multiple tasks (Admin and Manager only)
+    - Sets status to 'cancelled' for all specified tasks
+    - Tasks remain in database for audit trail
+    """
+    db = get_database()
+    
+    if not bulk_data.task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No task IDs provided"
+        )
+    
+    # Get task titles for audit log
+    tasks = await db.tasks.find(
+        {"id": {"$in": bulk_data.task_ids}},
+        {"_id": 0, "id": 1, "title": 1}
+    ).to_list(len(bulk_data.task_ids))
+    
+    # Perform bulk cancel
+    result = await db.tasks.update_many(
+        {"id": {"$in": bulk_data.task_ids}},
+        {"$set": {
+            "status": "cancelled",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Log audit for bulk cancel
+    await log_audit(
+        action_type="bulk_task_cancel",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=None,
+        metadata={
+            "task_count": result.modified_count,
+            "task_ids": bulk_data.task_ids,
+            "task_titles": [t["title"] for t in tasks]
+        }
+    )
+    
+    return BulkOperationResponse(
+        success=True,
+        updated_count=result.modified_count,
+        failed_count=len(bulk_data.task_ids) - result.modified_count,
+        message=f"Successfully cancelled {result.modified_count} tasks"
+    )
+
+
+@router.delete("/bulk/delete", response_model=BulkOperationResponse)
+async def bulk_delete_tasks(
+    bulk_data: BulkTaskDelete,
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Bulk delete multiple tasks permanently (Admin and Manager only)
+    - WARNING: This permanently removes tasks from the database
+    - Also deletes associated comments and attachments
+    """
+    db = get_database()
+    
+    if not bulk_data.task_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No task IDs provided"
+        )
+    
+    # Get task titles for audit log before deletion
+    tasks = await db.tasks.find(
+        {"id": {"$in": bulk_data.task_ids}},
+        {"_id": 0, "id": 1, "title": 1}
+    ).to_list(len(bulk_data.task_ids))
+    
+    # Delete associated comments
+    await db.comments.delete_many({"task_id": {"$in": bulk_data.task_ids}})
+    
+    # Delete associated attachments (and their files)
+    attachments = await db.attachments.find(
+        {"task_id": {"$in": bulk_data.task_ids}},
+        {"_id": 0, "file_path": 1}
+    ).to_list(1000)
+    
+    import os
+    for attachment in attachments:
+        if os.path.exists(attachment.get("file_path", "")):
+            try:
+                os.remove(attachment["file_path"])
+            except:
+                pass
+    
+    await db.attachments.delete_many({"task_id": {"$in": bulk_data.task_ids}})
+    
+    # Delete tasks
+    result = await db.tasks.delete_many({"id": {"$in": bulk_data.task_ids}})
+    
+    # Log audit for bulk delete
+    await log_audit(
+        action_type="bulk_task_delete",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        task_id=None,
+        metadata={
+            "task_count": result.deleted_count,
+            "task_ids": bulk_data.task_ids,
+            "task_titles": [t["title"] for t in tasks]
+        }
+    )
+    
+    return BulkOperationResponse(
+        success=True,
+        updated_count=result.deleted_count,
+        failed_count=len(bulk_data.task_ids) - result.deleted_count,
+        message=f"Successfully deleted {result.deleted_count} tasks permanently"
+    )
+
+================================================================================
+FILE: backend\app\api\routes\users.py
+================================================================================
+
+from fastapi import APIRouter, HTTPException, status, Depends
+from typing import List
+from app.schemas.user import UserCreate, UserResponse, UserUpdate, PasswordReset
+from app.models.user import UserInDB
+from app.core.security import get_password_hash
+from app.core.roles import VALID_ROLES, USER_MANAGEMENT_ROLES, STAFF_ROLES, NON_ADMIN_ROLES, MANAGER_ROLES
+from app.db.mongodb import get_database
+from app.api.deps import get_current_user, require_role
+from app.services.audit_service import log_audit
+import uuid
+from datetime import datetime, timezone
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
+@router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    user_data: UserCreate,
+    current_user: UserResponse = Depends(require_role(USER_MANAGEMENT_ROLES))
+):
+    """
+    Create a new user (Admin only)
+    - Validates unique email
+    - Hashes password
+    - Stores in MongoDB
+    """
+    db = get_database()
+    
+    # Check if user already exists
+    existing_user = await db.users.find_one({"email": user_data.email})
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User with this email already exists"
+        )
+    
+    # Validate role - now supports extended roles
+    if user_data.role not in VALID_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}"
+        )
+    
+    # Create user document
+    user_in_db = UserInDB(
+        id=str(uuid.uuid4()),
+        email=user_data.email,
+        full_name=user_data.full_name,
+        hashed_password=get_password_hash(user_data.password),
+        role=user_data.role
+    )
+    
+    # Convert to dict and serialize datetime
+    user_dict = user_in_db.model_dump()
+    user_dict["created_at"] = user_dict["created_at"].isoformat()
+    user_dict["updated_at"] = user_dict["updated_at"].isoformat()
+    
+    await db.users.insert_one(user_dict)
+    
+    # Log audit
+    await log_audit(
+        action_type="user_created",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        metadata={
+            "new_user_email": user_data.email,
+            "new_user_role": user_data.role
+        }
+    )
+    
+    # Return response without password
+    return UserResponse(
+        id=user_in_db.id,
+        email=user_in_db.email,
+        full_name=user_in_db.full_name,
+        role=user_in_db.role,
+        is_active=user_in_db.is_active,
+        created_at=user_in_db.created_at,
+        updated_at=user_in_db.updated_at
+    )
+
+@router.get("/assignable", response_model=List[UserResponse])
+async def list_assignable_users(
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    List users available for task assignment
+    - Non-admin roles see everyone except admins
+    - Admins and managers see all users
+    """
+    db = get_database()
+    
+    if current_user.role in NON_ADMIN_ROLES:
+        # Non-admin roles can see everyone except admins
+        users = await db.users.find(
+            {"role": {"$ne": "admin"}, "is_active": True},
+            {"_id": 0, "hashed_password": 0}
+        ).to_list(1000)
+    else:
+        # Admins and managers see all active users
+        users = await db.users.find(
+            {"is_active": True},
+            {"_id": 0, "hashed_password": 0}
+        ).to_list(1000)
+    
+    # Convert datetime strings
+    for user in users:
+        if isinstance(user.get('created_at'), str):
+            user['created_at'] = datetime.fromisoformat(user['created_at'])
+        elif 'created_at' not in user:
+            user['created_at'] = datetime.now(timezone.utc)
+        
+        if isinstance(user.get('updated_at'), str):
+            user['updated_at'] = datetime.fromisoformat(user['updated_at'])
+        elif 'updated_at' not in user:
+            user['updated_at'] = datetime.now(timezone.utc)
+    
+    return [UserResponse(**user) for user in users]
+
+@router.get("", response_model=List[UserResponse])
+async def list_users(
+    current_user: UserResponse = Depends(require_role(MANAGER_ROLES))
+):
+    """
+    List all users (Admin and Manager only)
+    """
+    db = get_database()
+    users = await db.users.find({}, {"_id": 0, "hashed_password": 0}).to_list(1000)
+    
+    # Convert datetime strings
+    for user in users:
+        if isinstance(user.get('created_at'), str):
+            user['created_at'] = datetime.fromisoformat(user['created_at'])
+        elif 'created_at' not in user:
+            user['created_at'] = datetime.now(timezone.utc)
+        
+        if isinstance(user.get('updated_at'), str):
+            user['updated_at'] = datetime.fromisoformat(user['updated_at'])
+        elif 'updated_at' not in user:
+            user['updated_at'] = datetime.now(timezone.utc)
+    
+    return [UserResponse(**user) for user in users]
+
+@router.get("/{user_id}", response_model=UserResponse)
+async def get_user(
+    user_id: str,
+    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Get user by ID (Admin and Manager only)
+    """
+    db = get_database()
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "hashed_password": 0})
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Convert datetime strings
+    if isinstance(user.get('created_at'), str):
+        user['created_at'] = datetime.fromisoformat(user['created_at'])
+    elif 'created_at' not in user:
+        user['created_at'] = datetime.now(timezone.utc)
+    
+    if isinstance(user.get('updated_at'), str):
+        user['updated_at'] = datetime.fromisoformat(user['updated_at'])
+    elif 'updated_at' not in user:
+        user['updated_at'] = datetime.now(timezone.utc)
+    
+    return UserResponse(**user)
+
+@router.patch("/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: str,
+    user_update: UserUpdate,
+    current_user: UserResponse = Depends(require_role(["admin"]))
+):
+    """
+    Update user details (Admin only)
+    - Can update email, full_name, role, is_active
+    - Cannot update password (use password reset endpoint)
+    """
+    db = get_database()
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    update_data = user_update.model_dump(exclude_unset=True)
+    
+    if not update_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update"
+        )
+    
+    # Check email uniqueness if updating email
+    if "email" in update_data and update_data["email"] != user["email"]:
+        existing = await db.users.find_one({"email": update_data["email"]})
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already in use"
+            )
+    
+    # Validate role if updating
+    if "role" in update_data:
+        valid_roles = ["admin", "manager", "team_member"]
+        if update_data["role"] not in valid_roles:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}"
+            )
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.users.update_one({"id": user_id}, {"$set": update_data})
+    
+    # Log audit
+    await log_audit(
+        action_type="user_updated",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        metadata={
+            "updated_user_id": user_id,
+            "updated_user_email": user.get("email"),
+            "changes": update_data
+        }
+    )
+    
+    # Fetch updated user
+    updated_user = await db.users.find_one({"id": user_id}, {"_id": 0, "hashed_password": 0})
+    
+    if isinstance(updated_user.get('created_at'), str):
+        updated_user['created_at'] = datetime.fromisoformat(updated_user['created_at'])
+    elif 'created_at' not in updated_user:
+        updated_user['created_at'] = datetime.now(timezone.utc)
+    
+    if isinstance(updated_user.get('updated_at'), str):
+        updated_user['updated_at'] = datetime.fromisoformat(updated_user['updated_at'])
+    elif 'updated_at' not in updated_user:
+        updated_user['updated_at'] = datetime.now(timezone.utc)
+    
+    return UserResponse(**updated_user)
+
+@router.post("/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: str,
+    password_data: PasswordReset,
+    current_user: UserResponse = Depends(require_role(["admin"]))
+):
+    """
+    Reset user password (Admin only)
+    - Hashes new password
+    - Updates user document
+    """
+    db = get_database()
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Hash new password
+    hashed_password = get_password_hash(password_data.new_password)
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "hashed_password": hashed_password,
+            "password": hashed_password,  # Update both fields for compatibility
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Revoke all refresh tokens for this user
+    await db.refresh_tokens.update_many(
+        {"user_id": user_id, "is_revoked": False},
+        {"$set": {"is_revoked": True}}
+    )
+    
+    # Log audit
+    await log_audit(
+        action_type="password_reset",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        metadata={
+            "target_user_id": user_id,
+            "target_user_email": user.get("email")
+        }
+    )
+    
+    return {"message": "Password reset successfully"}
+
+@router.post("/{user_id}/deactivate")
+async def deactivate_user(
+    user_id: str,
+    current_user: UserResponse = Depends(require_role(["admin"]))
+):
+    """
+    Deactivate user (Admin only)
+    - Sets is_active to False
+    - User cannot log in
+    - Admin cannot deactivate themselves
+    """
+    db = get_database()
+    
+    # Prevent admin from deactivating themselves
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot deactivate your own account"
+        )
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "is_active": False,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Revoke all refresh tokens
+    await db.refresh_tokens.update_many(
+        {"user_id": user_id, "is_revoked": False},
+        {"$set": {"is_revoked": True}}
+    )
+    
+    # Log audit
+    await log_audit(
+        action_type="user_deactivated",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        metadata={
+            "target_user_id": user_id,
+            "target_user_email": user.get("email")
+        }
+    )
+    
+    return {"message": "User deactivated successfully"}
+
+@router.post("/{user_id}/activate")
+async def activate_user(
+    user_id: str,
+    current_user: UserResponse = Depends(require_role(["admin"]))
+):
+    """
+    Activate user (Admin only)
+    - Sets is_active to True
+    - User can log in again
+    """
+    db = get_database()
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "is_active": True,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Log audit
+    await log_audit(
+        action_type="user_activated",
+        user_id=current_user.id,
+        user_name=current_user.full_name,
+        user_email=current_user.email,
+        metadata={
+            "target_user_id": user_id,
+            "target_user_email": user.get("email")
+        }
+    )
+    
+    return {"message": "User activated successfully"}
+
+================================================================================
+FILE: backend\app\api\routes\websocket.py
+================================================================================
+
+"""
+WebSocket API Routes for real-time features
+"""
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from app.services.websocket_manager import manager
+from app.core.security import decode_access_token
+from app.db.mongodb import get_database
+import logging
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["WebSocket"])
+
+@router.websocket("/ws")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    token: str = Query(...)
+):
+    """
+    WebSocket endpoint for real-time notifications and chat
+    Connect with: ws://host/api/ws?token=<access_token>
+    
+    Message types received:
+    - notification: New notification
+    - chat_message: New chat message
+    - typing: Typing indicator
+    - read_receipt: Message read receipt
+    """
+    user_id = None
+    
+    try:
+        # Verify token
+        payload = decode_access_token(token)
+        if not payload:
+            await websocket.close(code=4001, reason="Invalid token")
+            return
+        
+        user_id = payload.get("sub")
+        if not user_id:
+            await websocket.close(code=4001, reason="Invalid token")
+            return
+        
+        # Verify user exists and is active
+        db = get_database()
+        user = await db.users.find_one({"id": user_id, "is_active": True}, {"_id": 0})
+        if not user:
+            await websocket.close(code=4001, reason="User not found or inactive")
+            return
+        
+        # Connect
+        await manager.connect(websocket, user_id)
+        
+        # Send initial connection success
+        await websocket.send_json({
+            "type": "connected",
+            "data": {"user_id": user_id, "message": "WebSocket connected"}
+        })
+        
+        # Keep connection alive and handle incoming messages
+        while True:
+            try:
+                data = await websocket.receive_json()
+                
+                # Handle ping/pong for keep-alive
+                if data.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
+                
+                # Handle typing indicator from client
+                elif data.get("type") == "typing":
+                    conversation_id = data.get("conversation_id")
+                    is_typing = data.get("is_typing", False)
+                    
+                    if conversation_id:
+                        # Get conversation participants
+                        conv = await db.conversations.find_one(
+                            {"id": conversation_id, "participants": user_id},
+                            {"_id": 0, "participants": 1}
+                        )
+                        if conv:
+                            await manager.broadcast_typing(
+                                conversation_id,
+                                user_id,
+                                user.get("full_name", "Unknown"),
+                                conv["participants"],
+                                is_typing
+                            )
+                
+            except Exception as e:
+                logger.error(f"WebSocket message error: {e}")
+                break
+    
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for user {user_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        if user_id:
+            manager.disconnect(websocket, user_id)
+
+================================================================================
+FILE: backend\app\core\config.py
+================================================================================
+
+from pydantic_settings import BaseSettings
+from typing import Optional
+import os
+
+class Settings(BaseSettings):
+    # Application
+    APP_NAME: str = "TripStars Task Management"
+    APP_VERSION: str = "1.0.0"
+    DEBUG: bool = False
+    
+    # MongoDB
+    MONGODB_URI: str = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+    DB_NAME: str = os.getenv("DB_NAME", "tripstars_db")
+    
+    # Security - JWT
+    SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "tripstars-secret-key-change-in-production")
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Short-lived access token
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived refresh token
+    
+    # CORS
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
+    
+    # Email Configuration (Phase 4)
+    EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "false").lower() == "true"
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", ""))
+    
+    # File Upload
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "/app/uploads")
+    MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+    
+    class Config:
+        case_sensitive = True
+        env_file = ".env"
+        extra = "ignore"  # Allow extra fields from environment
+
+settings = Settings()
+
+================================================================================
+FILE: backend\app\core\roles.py
+================================================================================
+
+"""
+Role Constants and Permission Helpers
+Centralized role management for backward-compatible role extensions
+"""
+
+# All valid roles in the system
+# IMPORTANT: Do not remove existing roles, only add new ones
+VALID_ROLES = [
+    "admin",
+    "manager",
+    "team_member",  # Legacy role - kept for backward compatibility
+    "sales",
+    "operations", 
+    "marketing",
+    "accounts"
+]
+
+# Role groups for permission checks
+ADMIN_ROLES = ["admin"]
+MANAGER_ROLES = ["admin", "manager"]
+
+# Staff roles - can create tasks, comments, attachments, participate in chats
+STAFF_ROLES = [
+    "admin", 
+    "manager", 
+    "team_member",
+    "sales",
+    "operations",
+    "marketing",
+    "accounts"
+]
+
+# Roles that can view all tasks (not just their own)
+ALL_TASKS_VIEW_ROLES = [
+    "admin",
+    "manager",
+    "sales",
+    "operations",
+    "marketing", 
+    "accounts"
+]
+
+# Roles that cannot assign tasks to admins
+NON_ADMIN_ROLES = [
+    "team_member",
+    "sales",
+    "operations",
+    "marketing",
+    "accounts"
+]
+
+# Roles that can access reports
+REPORTS_ACCESS_ROLES = ["admin", "manager"]
+
+# Roles that can access audit logs
+AUDIT_ACCESS_ROLES = ["admin", "manager"]
+
+# Roles that can manage users (CRUD)
+USER_MANAGEMENT_ROLES = ["admin"]
+
+
+def is_valid_role(role: str) -> bool:
+    """Check if a role is valid"""
+    return role in VALID_ROLES
+
+
+def can_assign_to_admin(user_role: str) -> bool:
+    """Check if user can assign tasks to admin"""
+    return user_role in ADMIN_ROLES or user_role in MANAGER_ROLES
+
+
+def get_assignable_roles_for_user(user_role: str) -> list:
+    """Get list of roles that a user can assign tasks to"""
+    if user_role in ["admin", "manager"]:
+        return VALID_ROLES
+    else:
+        # Non-admin/manager roles cannot assign to admins
+        return [r for r in VALID_ROLES if r != "admin"]
+
+================================================================================
+FILE: backend\app\core\security.py
+================================================================================
+
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from fastapi import HTTPException, status
+from app.core.config import settings
+import secrets
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against a hash"""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    """Hash a password"""
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Create JWT access token (short-lived)"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire, "type": "access"})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+def create_refresh_token() -> str:
+    """Create a secure random refresh token"""
+    return secrets.token_urlsafe(32)
+
+def decode_access_token(token: str) -> dict:
+    """Decode and verify JWT access token"""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("type") != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return payload
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+================================================================================
+FILE: backend\app\db\mongodb.py
+================================================================================
+
+from motor.motor_asyncio import AsyncIOMotorClient
+from app.core.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+class MongoDB:
+    client: AsyncIOMotorClient = None
+    
+mongodb = MongoDB()
+
+async def connect_to_mongo():
+    """Connect to MongoDB"""
+    logger.info("Connecting to MongoDB...")
+    mongodb.client = AsyncIOMotorClient(settings.MONGODB_URI)
+    logger.info("Connected to MongoDB successfully")
+
+async def close_mongo_connection():
+    """Close MongoDB connection"""
+    logger.info("Closing MongoDB connection...")
+    mongodb.client.close()
+    logger.info("MongoDB connection closed")
+
+def get_database():
+    """Get database instance"""
+    return mongodb.client[settings.DB_NAME]
+
+================================================================================
+FILE: backend\app\models\attachment.py
+================================================================================
+
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field
+
+class AttachmentInDB(BaseModel):
+    """Attachment model for MongoDB storage"""
+    id: str
+    task_id: str
+    uploaded_by: str  # User ID
+    uploaded_by_name: str
+    uploaded_by_email: str
+    file_name: str
+    file_type: str  # pdf, jpg, png, doc, docx
+    file_size: int  # in bytes
+    file_path: str
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+================================================================================
+FILE: backend\app\models\audit_log.py
+================================================================================
+
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field
+from typing import Dict, Any, Optional
+
+class AuditLogInDB(BaseModel):
+    """Audit log model for MongoDB storage"""
+    id: str
+    action_type: str  # task_created, task_updated, status_changed, file_uploaded, comment_added, user_created
+    user_id: str
+    user_name: str
+    user_email: str
+    task_id: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)  # old_value, new_value, etc.
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+================================================================================
+FILE: backend\app\models\chat.py
+================================================================================
+
+"""
+Chat Models for MongoDB
+"""
+from pydantic import BaseModel, Field
+from typing import Optional, List
+from datetime import datetime, timezone
+
+class ConversationInDB(BaseModel):
+    """Conversation/Chat model"""
+    id: str
+    name: Optional[str] = None  # For group chats
+    is_group: bool = False
+    participants: List[str]  # List of user IDs
+    participant_names: List[str] = []  # List of user names
+    created_by: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_message: Optional[str] = None
+    last_message_at: Optional[datetime] = None
+    # Pinning feature - list of user IDs who pinned this conversation
+    pinned_by: List[str] = []
+
+class MessageInDB(BaseModel):
+    """Chat Message model"""
+    id: str
+    conversation_id: str
+    sender_id: str
+    sender_name: str
+    content: str
+    message_type: str = "text"  # text, attachment
+    attachment_id: Optional[str] = None
+    attachment_name: Optional[str] = None
+    attachment_type: Optional[str] = None
+    read_by: List[str] = []  # List of user IDs who have read this message
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Pinning feature
+    is_pinned: bool = False
+    pinned_by: Optional[str] = None
+    pinned_at: Optional[datetime] = None
+
+class ChatAttachmentInDB(BaseModel):
+    """Chat Attachment model"""
+    id: str
+    conversation_id: str
+    message_id: str
+    uploaded_by: str
+    uploaded_by_name: str
+    file_name: str
+    file_type: str
+    file_size: int
+    file_path: str
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+================================================================================
+FILE: backend\app\models\comment.py
+================================================================================
+
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field
+
+class CommentInDB(BaseModel):
+    """Comment model for MongoDB storage"""
+    id: str
+    task_id: str  # Task ID
+    user_id: str  # User ID who created the comment
+    user_name: str
+    user_email: str
+    content: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+================================================================================
+FILE: backend\app\models\notification.py
+================================================================================
+
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field
+from typing import Optional
+
+class NotificationInDB(BaseModel):
+    """Notification model for MongoDB storage"""
+    id: str
+    user_id: str
+    type: str  # task_assigned, task_overdue, comment_added, file_uploaded, status_changed
+    related_task_id: Optional[str] = None
+    message: str
+    is_read: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+================================================================================
+FILE: backend\app\models\refresh_token.py
+================================================================================
+
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field
+
+class RefreshTokenInDB(BaseModel):
+    """Refresh token model for MongoDB storage"""
+    id: str
+    user_id: str
+    token: str
+    expires_at: datetime
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    is_revoked: bool = False
+
+================================================================================
+FILE: backend\app\models\task.py
+================================================================================
+
+from datetime import datetime, timezone
+from typing import Optional
+from pydantic import BaseModel, Field
+
+class TaskInDB(BaseModel):
+    """Task model for MongoDB storage"""
+    id: str
+    title: str
+    description: str
+    priority: str  # 'low', 'medium', 'high'
+    status: str  # 'todo', 'in_progress', 'completed'
+    assigned_to: str  # User ID
+    assigned_to_email: Optional[str] = None
+    assigned_to_name: Optional[str] = None
+    created_by: str  # User ID
+    created_by_name: Optional[str] = None
+    due_date: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+================================================================================
+FILE: backend\app\models\user.py
+================================================================================
+
+from datetime import datetime, timezone
+from typing import Optional
+from pydantic import BaseModel, EmailStr, Field
+
+class UserInDB(BaseModel):
+    """User model for MongoDB storage"""
+    id: str
+    email: EmailStr
+    full_name: str
+    hashed_password: str
+    role: str  # 'admin', 'manager', 'team_member', 'sales', 'operations', 'marketing', 'accounts'
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+================================================================================
+FILE: backend\app\schemas\attachment.py
+================================================================================
+
+from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+
+class AttachmentUpload(BaseModel):
+    task_id: str
+
+class AttachmentResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    task_id: str
+    uploaded_by: str
+    uploaded_by_name: str
+    uploaded_by_email: str
+    file_name: str
+    file_type: str
+    file_size: int
+    file_path: str
+    uploaded_at: datetime
+
+class UserProductivity(BaseModel):
+    user_id: str
+    user_name: str
+    user_email: str
+    total_tasks_assigned: int
+    tasks_completed: int
+    tasks_completed_on_time: int
+    overdue_tasks: int
+    average_completion_time_hours: float
+    productivity_score: float  # 0-100
+
+class TeamOverview(BaseModel):
+    total_users: int
+    total_tasks: int
+    total_completed: int
+    total_overdue: int
+    average_productivity_score: float
+    user_stats: list[UserProductivity]
+
+================================================================================
+FILE: backend\app\schemas\auth.py
+================================================================================
+
+from pydantic import BaseModel, EmailStr
+from typing import Optional
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    refresh_token: Optional[str] = None
+    user: dict
+
+================================================================================
+FILE: backend\app\schemas\chat.py
+================================================================================
+
+"""
+Chat Schemas for API requests/responses
+"""
+from pydantic import BaseModel, Field
+from typing import Optional, List
+from datetime import datetime
+
+# Conversation schemas
+class ConversationCreate(BaseModel):
+    """Create conversation request"""
+    name: Optional[str] = None  # Required for groups
+    is_group: bool = False
+    participant_ids: List[str]  # For DM: single user ID, For group: multiple user IDs
+
+class ConversationResponse(BaseModel):
+    """Conversation response"""
+    id: str
+    name: Optional[str] = None
+    is_group: bool
+    participants: List[str]
+    participant_names: List[str]
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+    last_message: Optional[str] = None
+    last_message_at: Optional[datetime] = None
+    unread_count: int = 0
+    is_pinned: bool = False  # Whether current user has pinned this
+
+class ConversationUpdate(BaseModel):
+    """Update conversation (groups only)"""
+    name: Optional[str] = None
+    add_participants: Optional[List[str]] = None
+    remove_participants: Optional[List[str]] = None
+
+# Message schemas
+class MessageCreate(BaseModel):
+    """Create message request"""
+    content: str
+    message_type: str = "text"  # text or attachment
+    attachment_id: Optional[str] = None
+
+class MessageResponse(BaseModel):
+    """Message response"""
+    id: str
+    conversation_id: str
+    sender_id: str
+    sender_name: str
+    content: str
+    message_type: str
+    attachment_id: Optional[str] = None
+    attachment_name: Optional[str] = None
+    attachment_type: Optional[str] = None
+    read_by: List[str]
+    created_at: datetime
+    is_own: bool = False  # Set by API based on current user
+    is_pinned: bool = False
+    pinned_by: Optional[str] = None
+    pinned_at: Optional[datetime] = None
+
+class ChatAttachmentResponse(BaseModel):
+    """Chat attachment response"""
+    id: str
+    conversation_id: str
+    message_id: str
+    uploaded_by: str
+    uploaded_by_name: str
+    file_name: str
+    file_type: str
+    file_size: int
+    uploaded_at: datetime
+
+# Typing indicator
+class TypingIndicator(BaseModel):
+    """Typing indicator request"""
+    conversation_id: str
+    is_typing: bool
+
+# Read receipt
+class ReadReceipt(BaseModel):
+    """Mark messages as read request"""
+    message_ids: List[str]
+
+# Pin schemas
+class PinConversation(BaseModel):
+    """Pin/unpin conversation request"""
+    pin: bool = True
+
+class PinMessage(BaseModel):
+    """Pin/unpin message request"""
+    pin: bool = True
+
+# Search schema
+class MessageSearchResponse(BaseModel):
+    """Search result response"""
+    id: str
+    conversation_id: str
+    conversation_name: Optional[str]
+    sender_id: str
+    sender_name: str
+    content: str
+    created_at: datetime
+    is_pinned: bool = False
+
+================================================================================
+FILE: backend\app\schemas\comment.py
+================================================================================
+
+from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from typing import Optional
+
+class CommentBase(BaseModel):
+    content: str
+
+class CommentCreate(CommentBase):
+    task_id: str
+
+class CommentUpdate(BaseModel):
+    content: str
+
+class CommentResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    task_id: str
+    user_id: str
+    user_name: str
+    user_email: str
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+================================================================================
+FILE: backend\app\schemas\notification.py
+================================================================================
+
+from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from typing import Optional, Dict, Any
+
+class NotificationResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    user_id: str
+    type: str
+    related_task_id: Optional[str] = None
+    message: str
+    is_read: bool
+    created_at: datetime
+
+class AuditLogResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    action_type: str
+    user_id: str
+    user_name: str
+    user_email: str
+    task_id: Optional[str] = None
+    metadata: Dict[str, Any]
+    timestamp: datetime
+
+================================================================================
+FILE: backend\app\schemas\task.py
+================================================================================
+
+from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from typing import Optional, List
+
+class TaskBase(BaseModel):
+    title: str
+    description: str
+    priority: str
+    due_date: str
+
+class TaskCreate(TaskBase):
+    assigned_to: str
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    due_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+
+class TaskResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    title: str
+    description: str
+    priority: str
+    status: str
+    assigned_to: str
+    assigned_to_email: Optional[str] = None
+    assigned_to_name: Optional[str] = None
+    created_by: str
+    created_by_name: Optional[str] = None
+    due_date: str
+    created_at: datetime
+    updated_at: datetime
+
+# Bulk operation schemas
+class BulkTaskUpdate(BaseModel):
+    task_ids: List[str]
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    assigned_to: Optional[str] = None
+
+class BulkTaskCancel(BaseModel):
+    task_ids: List[str]
+
+class BulkTaskDelete(BaseModel):
+    task_ids: List[str]
+
+class BulkOperationResponse(BaseModel):
+    success: bool
+    updated_count: int
+    failed_count: int
+    message: str
+
+================================================================================
+FILE: backend\app\schemas\user.py
+================================================================================
+
+from pydantic import BaseModel, EmailStr, ConfigDict
+from datetime import datetime
+from typing import Optional
+
+class UserBase(BaseModel):
+    email: EmailStr
+    full_name: str
+    role: str
+
+class UserCreate(UserBase):
+    password: str
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class PasswordReset(BaseModel):
+    new_password: str
+
+class PasswordReset(BaseModel):
+    new_password: str
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    email: EmailStr
+    full_name: str
+    role: str
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime
+
+================================================================================
+FILE: backend\app\services\audit_service.py
+================================================================================
+
+import uuid
+from datetime import datetime, timezone
+from app.models.audit_log import AuditLogInDB
+from app.db.mongodb import get_database
+import logging
+from typing import Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
+
+async def log_audit(
+    action_type: str,
+    user_id: str,
+    user_name: str,
+    user_email: str,
+    task_id: Optional[str] = None,
+    metadata: Dict[str, Any] = None
+):
+    """
+    Create an audit log entry
+    
+    Args:
+        action_type: Type of action (task_created, task_updated, etc.)
+        user_id: ID of user performing action
+        user_name: Name of user
+        user_email: Email of user
+        task_id: Related task ID (optional)
+        metadata: Additional metadata (old_value, new_value, etc.)
+    """
+    try:
+        db = get_database()
+        
+        audit_log = AuditLogInDB(
+            id=str(uuid.uuid4()),
+            action_type=action_type,
+            user_id=user_id,
+            user_name=user_name,
+            user_email=user_email,
+            task_id=task_id,
+            metadata=metadata or {}
+        )
+        
+        audit_dict = audit_log.model_dump()
+        audit_dict["timestamp"] = audit_dict["timestamp"].isoformat()
+        
+        await db.audit_logs.insert_one(audit_dict)
+        logger.info(f"Audit log created: {action_type} by {user_email}")
+        
+        return audit_log
+    except Exception as e:
+        logger.error(f"Failed to create audit log: {str(e)}")
+        return None
+
+async def get_audit_logs(
+    limit: int = 100,
+    action_type: Optional[str] = None,
+    user_id: Optional[str] = None,
+    task_id: Optional[str] = None
+):
+    """
+    Get audit logs with optional filters
+    
+    Args:
+        limit: Maximum number of logs to return
+        action_type: Filter by action type
+        user_id: Filter by user
+        task_id: Filter by task
+    """
+    try:
+        db = get_database()
+        
+        query = {}
+        if action_type:
+            query["action_type"] = action_type
+        if user_id:
+            query["user_id"] = user_id
+        if task_id:
+            query["task_id"] = task_id
+        
+        logs = await db.audit_logs.find(
+            query,
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(limit).to_list(limit)
+        
+        # Convert datetime strings
+        for log in logs:
+            if isinstance(log.get('timestamp'), str):
+                log['timestamp'] = datetime.fromisoformat(log['timestamp'])
+        
+        return logs
+    except Exception as e:
+        logger.error(f"Failed to get audit logs: {str(e)}")
+        return []
+
+================================================================================
+FILE: backend\app\services\email_service.py
+================================================================================
+
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import logging
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+def send_email(to_email: str, subject: str, body: str) -> bool:
+    """
+    Send an email via SMTP
+    
+    Args:
+        to_email: Recipient email address
+        subject: Email subject
+        body: Email body (plain text)
+    
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    if not settings.EMAIL_ENABLED:
+        logger.info(f"Email sending disabled. Would send to {to_email}: {subject}")
+        return True
+    
+    if not all([settings.SMTP_HOST, settings.SMTP_USER, settings.SMTP_PASSWORD]):
+        logger.warning("Email configuration incomplete. Skipping email send.")
+        return False
+    
+    try:
+        # Create message
+        msg = MIMEMultipart()
+        msg['From'] = settings.SMTP_FROM_EMAIL
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        
+        msg.attach(MIMEText(body, 'plain'))
+        
+        # Send email
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+            server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.send_message(msg)
+        
+        logger.info(f"Email sent successfully to {to_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email to {to_email}: {str(e)}")
+        return False
+
+def send_task_assigned_email(to_email: str, to_name: str, task_title: str, task_due_date: str, assigned_by: str):
+    """
+    Send task assignment notification email
+    """
+    subject = f"New Task Assigned: {task_title}"
+    body = f"""Hello {to_name},
+
+You have been assigned a new task in TripStars Task Management System.
+
+Task: {task_title}
+Due Date: {task_due_date}
+Assigned By: {assigned_by}
+
+Please log in to view the task details and start working on it.
+
+Best regards,
+TripStars Task Management System
+"""
+    return send_email(to_email, subject, body)
+
+def send_task_overdue_email(to_email: str, to_name: str, task_title: str, task_due_date: str):
+    """
+    Send overdue task reminder email
+    """
+    subject = f"Task Overdue: {task_title}"
+    body = f"""Hello {to_name},
+
+This is a reminder that the following task is now overdue:
+
+Task: {task_title}
+Due Date: {task_due_date}
+Status: OVERDUE
+
+Please complete this task as soon as possible or update its status.
+
+Best regards,
+TripStars Task Management System
+"""
+    return send_email(to_email, subject, body)
+
+def send_comment_notification_email(to_email: str, to_name: str, task_title: str, commenter_name: str, comment_preview: str):
+    """
+    Send comment notification email
+    """
+    subject = f"New Comment on Task: {task_title}"
+    body = f"""Hello {to_name},
+
+{commenter_name} has added a comment to a task you're involved with:
+
+Task: {task_title}
+Comment: {comment_preview[:100]}{'...' if len(comment_preview) > 100 else ''}
+
+Please log in to view the full comment and respond if needed.
+
+Best regards,
+TripStars Task Management System
+"""
+    return send_email(to_email, subject, body)
+
+================================================================================
+FILE: backend\app\services\notification_service.py
+================================================================================
+
+import uuid
+from datetime import datetime, timezone
+from app.models.notification import NotificationInDB
+from app.db.mongodb import get_database
+from app.services.websocket_manager import manager
+import logging
+
+logger = logging.getLogger(__name__)
+
+async def create_notification(
+    user_id: str,
+    notification_type: str,
+    message: str,
+    related_task_id: str = None
+):
+    """
+    Create a notification for a user and push via WebSocket
+    
+    Flow:
+    1. Save notification in MongoDB
+    2. Push via WebSocket (real-time)
+    3. Frontend updates UI + plays sound
+    
+    Args:
+        user_id: ID of user to notify
+        notification_type: Type of notification (task_assigned, task_overdue, etc.)
+        message: Notification message
+        related_task_id: Related task ID (optional)
+    """
+    try:
+        db = get_database()
+        
+        notification = NotificationInDB(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            type=notification_type,
+            related_task_id=related_task_id,
+            message=message,
+            is_read=False
+        )
+        
+        notification_dict = notification.model_dump()
+        notification_dict["created_at"] = notification_dict["created_at"].isoformat()
+        
+        # Step 1: Save to MongoDB
+        await db.notifications.insert_one(notification_dict)
+        logger.info(f"Notification created for user {user_id}: {notification_type}")
+        
+        # Step 2: Push via WebSocket (real-time)
+        await manager.broadcast_notification(user_id, {
+            "id": notification.id,
+            "type": notification_type,
+            "message": message,
+            "related_task_id": related_task_id,
+            "is_read": False,
+            "created_at": notification_dict["created_at"]
+        })
+        logger.info(f"Notification pushed via WebSocket to user {user_id}")
+        
+        return notification
+    except Exception as e:
+        logger.error(f"Failed to create notification: {str(e)}")
+        return None
+
+async def get_user_notifications(user_id: str, unread_only: bool = False, limit: int = 50):
+    """
+    Get notifications for a user
+    
+    Args:
+        user_id: User ID
+        unread_only: Return only unread notifications
+        limit: Maximum number of notifications to return
+    """
+    try:
+        db = get_database()
+        
+        query = {"user_id": user_id}
+        if unread_only:
+            query["is_read"] = False
+        
+        notifications = await db.notifications.find(
+            query,
+            {"_id": 0}
+        ).sort("created_at", -1).limit(limit).to_list(limit)
+        
+        # Convert datetime strings
+        for notification in notifications:
+            if isinstance(notification.get('created_at'), str):
+                notification['created_at'] = datetime.fromisoformat(notification['created_at'])
+        
+        return notifications
+    except Exception as e:
+        logger.error(f"Failed to get notifications: {str(e)}")
+        return []
+
+async def mark_notification_read(notification_id: str, user_id: str):
+    """
+    Mark a notification as read
+    
+    Args:
+        notification_id: Notification ID
+        user_id: User ID (for authorization)
+    """
+    try:
+        db = get_database()
+        
+        result = await db.notifications.update_one(
+            {"id": notification_id, "user_id": user_id},
+            {"$set": {"is_read": True}}
+        )
+        
+        return result.modified_count > 0
+    except Exception as e:
+        logger.error(f"Failed to mark notification as read: {str(e)}")
+        return False
+
+async def mark_all_notifications_read(user_id: str):
+    """
+    Mark all notifications as read for a user
+    
+    Args:
+        user_id: User ID
+    """
+    try:
+        db = get_database()
+        
+        result = await db.notifications.update_many(
+            {"user_id": user_id, "is_read": False},
+            {"$set": {"is_read": True}}
+        )
+        
+        return result.modified_count
+    except Exception as e:
+        logger.error(f"Failed to mark all notifications as read: {str(e)}")
+        return 0
+
+================================================================================
+FILE: backend\app\services\scheduler.py
+================================================================================
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from datetime import datetime, timezone
+from app.db.mongodb import get_database
+from app.services.notification_service import create_notification
+from app.services.email_service import send_task_overdue_email
+import logging
+
+logger = logging.getLogger(__name__)
+
+scheduler = AsyncIOScheduler()
+
+async def check_overdue_tasks():
+    """
+    Background job to check for overdue tasks and send notifications
+    Runs periodically to find tasks that are overdue and not yet notified
+    """
+    try:
+        logger.info("Running overdue task check...")
+        db = get_database()
+        
+        current_time = datetime.now(timezone.utc)
+        
+        # Find tasks that are overdue and not completed
+        tasks = await db.tasks.find({
+            "status": {"$ne": "completed"}
+        }, {"_id": 0}).to_list(1000)
+        
+        notified_count = 0
+        
+        for task in tasks:
+            try:
+                # Parse due date
+                try:
+                    due_date = datetime.fromisoformat(task["due_date"])
+                    if due_date.tzinfo is None:
+                        due_date = due_date.replace(tzinfo=timezone.utc)
+                except:
+                    due_date = datetime.strptime(task["due_date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                
+                # Check if task is overdue
+                if current_time > due_date:
+                    # Check if we already sent an overdue notification recently (within 24 hours)
+                    existing_notification = await db.notifications.find_one({
+                        "related_task_id": task["id"],
+                        "type": "task_overdue",
+                        "user_id": task["assigned_to"]
+                    })
+                    
+                    # If no notification exists or it's been more than 24 hours, send new one
+                    should_notify = True
+                    if existing_notification:
+                        notif_created = existing_notification.get("created_at")
+                        if isinstance(notif_created, str):
+                            notif_created = datetime.fromisoformat(notif_created)
+                        
+                        # Check if notification was created within last 24 hours
+                        if (current_time - notif_created).total_seconds() < 86400:
+                            should_notify = False
+                    
+                    if should_notify:
+                        # Create notification
+                        await create_notification(
+                            user_id=task["assigned_to"],
+                            notification_type="task_overdue",
+                            message=f"Task '{task['title']}' is overdue (due: {task['due_date']})",
+                            related_task_id=task["id"]
+                        )
+                        
+                        # Send email (if configured)
+                        user = await db.users.find_one({"id": task["assigned_to"]}, {"_id": 0})
+                        if user:
+                            send_task_overdue_email(
+                                to_email=user["email"],
+                                to_name=user["full_name"],
+                                task_title=task["title"],
+                                task_due_date=task["due_date"]
+                            )
+                        
+                        notified_count += 1
+                        logger.info(f"Overdue notification sent for task: {task['title']}")
+            
+            except Exception as e:
+                logger.error(f"Error processing task {task.get('id')}: {str(e)}")
+                continue
+        
+        logger.info(f"Overdue task check complete. Sent {notified_count} notifications.")
+    
+    except Exception as e:
+        logger.error(f"Error in overdue task check: {str(e)}")
+
+def start_scheduler():
+    """Start the background scheduler"""
+    # Check for overdue tasks every hour
+    scheduler.add_job(
+        check_overdue_tasks,
+        'interval',
+        hours=1,
+        id='check_overdue_tasks',
+        replace_existing=True
+    )
+    
+    scheduler.start()
+    logger.info("Background scheduler started")
+
+def shutdown_scheduler():
+    """Shutdown the background scheduler"""
+    scheduler.shutdown()
+    logger.info("Background scheduler stopped")
+
+================================================================================
+FILE: backend\app\services\websocket_manager.py
+================================================================================
+
+"""
+WebSocket Connection Manager for real-time notifications and chat
+"""
+from fastapi import WebSocket
+from typing import Dict, Set
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+class ConnectionManager:
+    """Manages WebSocket connections for real-time features"""
+    
+    def __init__(self):
+        # user_id -> set of WebSocket connections
+        self.active_connections: Dict[str, Set[WebSocket]] = {}
+        # conversation_id -> set of user_ids currently typing
+        self.typing_users: Dict[str, Set[str]] = {}
+    
+    async def connect(self, websocket: WebSocket, user_id: str):
+        """Accept connection and add to active connections"""
+        await websocket.accept()
+        if user_id not in self.active_connections:
+            self.active_connections[user_id] = set()
+        self.active_connections[user_id].add(websocket)
+        logger.info(f"WebSocket connected for user {user_id}")
+    
+    def disconnect(self, websocket: WebSocket, user_id: str):
+        """Remove connection from active connections"""
+        if user_id in self.active_connections:
+            self.active_connections[user_id].discard(websocket)
+            if not self.active_connections[user_id]:
+                del self.active_connections[user_id]
+        logger.info(f"WebSocket disconnected for user {user_id}")
+    
+    async def send_to_user(self, user_id: str, message: dict):
+        """Send message to specific user (all their connections)"""
+        if user_id in self.active_connections:
+            disconnected = set()
+            for websocket in self.active_connections[user_id]:
+                try:
+                    await websocket.send_json(message)
+                except Exception as e:
+                    logger.error(f"Failed to send to user {user_id}: {e}")
+                    disconnected.add(websocket)
+            # Clean up disconnected sockets
+            for ws in disconnected:
+                self.active_connections[user_id].discard(ws)
+    
+    async def send_to_users(self, user_ids: list, message: dict):
+        """Send message to multiple users"""
+        for user_id in user_ids:
+            await self.send_to_user(user_id, message)
+    
+    async def broadcast_notification(self, user_id: str, notification: dict):
+        """Broadcast notification to user"""
+        await self.send_to_user(user_id, {
+            "type": "notification",
+            "data": notification
+        })
+    
+    async def broadcast_chat_message(self, participant_ids: list, message: dict):
+        """Broadcast chat message to all participants"""
+        await self.send_to_users(participant_ids, {
+            "type": "chat_message",
+            "data": message
+        })
+    
+    async def broadcast_typing(self, conversation_id: str, user_id: str, user_name: str, participant_ids: list, is_typing: bool):
+        """Broadcast typing indicator to conversation participants"""
+        if is_typing:
+            if conversation_id not in self.typing_users:
+                self.typing_users[conversation_id] = set()
+            self.typing_users[conversation_id].add(user_id)
+        else:
+            if conversation_id in self.typing_users:
+                self.typing_users[conversation_id].discard(user_id)
+        
+        # Send to all participants except the typing user
+        for pid in participant_ids:
+            if pid != user_id:
+                await self.send_to_user(pid, {
+                    "type": "typing",
+                    "data": {
+                        "conversation_id": conversation_id,
+                        "user_id": user_id,
+                        "user_name": user_name,
+                        "is_typing": is_typing
+                    }
+                })
+    
+    async def broadcast_read_receipt(self, conversation_id: str, user_id: str, message_ids: list, participant_ids: list):
+        """Broadcast read receipt to conversation participants"""
+        for pid in participant_ids:
+            if pid != user_id:
+                await self.send_to_user(pid, {
+                    "type": "read_receipt",
+                    "data": {
+                        "conversation_id": conversation_id,
+                        "user_id": user_id,
+                        "message_ids": message_ids
+                    }
+                })
+    
+    def is_user_online(self, user_id: str) -> bool:
+        """Check if user has active connections"""
+        return user_id in self.active_connections and len(self.active_connections[user_id]) > 0
+
+
+# Global connection manager instance
+manager = ConnectionManager()
