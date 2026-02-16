@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from fastapi.responses import FileResponse
+from app.core.config import settings
 from typing import List
 import os
 import uuid
@@ -15,7 +16,7 @@ from app.services.audit_service import log_audit
 router = APIRouter(prefix="/attachments", tags=["Attachments"])
 
 # Configuration
-UPLOAD_DIR = "/app/uploads"
+UPLOAD_DIR = settings.UPLOAD_DIR
 ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
