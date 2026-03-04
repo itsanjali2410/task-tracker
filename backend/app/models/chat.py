@@ -37,6 +37,15 @@ class MessageInDB(BaseModel):
     is_pinned: bool = False
     pinned_by: Optional[str] = None
     pinned_at: Optional[datetime] = None
+    # Edit feature
+    is_edited: bool = False
+    edited_at: Optional[datetime] = None
+    # Delete feature
+    is_deleted: bool = False
+    # Reply feature
+    reply_to_id: Optional[str] = None
+    reply_to_content: Optional[str] = None
+    reply_to_sender: Optional[str] = None
 
 class ChatAttachmentInDB(BaseModel):
     """Chat Attachment model"""

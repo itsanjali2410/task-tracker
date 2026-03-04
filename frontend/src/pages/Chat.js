@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
-import { Send, Plus, Users, User, Paperclip, Download, Check, CheckCheck, X, Pin, Search, MoreVertical } from 'lucide-react';
+import { Send, Plus, Users, User, Paperclip, Download, Check, CheckCheck, X, Pin, Search, MoreVertical, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -33,7 +33,13 @@ const Chat = () => {
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
   const [messageMenuId, setMessageMenuId] = useState(null);
-  
+
+  // Edit/Delete/Reply state
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [activePanel, setActivePanel] = useState('conversations');
+
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -104,6 +110,7 @@ const Chat = () => {
   const selectConversation = (conv) => {
     setSelectedConv(conv);
     fetchMessages(conv.id);
+    setActivePanel('chat'); // Show chat on mobile
   };
 
   const handleSendMessage = async (e) => {
@@ -112,18 +119,31 @@ const Chat = () => {
 
     setSendingMessage(true);
     try {
+      const messageData = {
+        content: newMessage,
+        message_type: 'text'
+      };
+
+      // Add reply info if replying
+      if (replyingTo) {
+        messageData.reply_to_id = replyingTo.id;
+        messageData.reply_to_content = replyingTo.content;
+        messageData.reply_to_sender = replyingTo.sender_name;
+      }
+
       const response = await axios.post(
         `${API}/chat/conversations/${selectedConv.id}/messages`,
-        { content: newMessage, message_type: 'text' }
+        messageData
       );
-      
+
       // Add to local messages (WebSocket will also receive it)
       addLocalMessage(selectedConv.id, response.data);
       setNewMessage('');
-      
+      clearReply();
+
       // Update conversation last message
-      setConversations(prev => prev.map(c => 
-        c.id === selectedConv.id 
+      setConversations(prev => prev.map(c =>
+        c.id === selectedConv.id
           ? { ...c, last_message: newMessage.slice(0, 100), last_message_at: new Date().toISOString() }
           : c
       ));
@@ -342,6 +362,55 @@ const Chat = () => {
     return <Check size={14} className="text-slate-400" />;
   };
 
+  // Edit message
+  const editMessage = async (messageId, content) => {
+    if (!selectedConv) return;
+    try {
+      const response = await axios.put(
+        `${API}/chat/conversations/${selectedConv.id}/messages/${messageId}`,
+        { content }
+      );
+      setMessages(prev => prev.map(m => m.id === messageId ? response.data : m));
+      setEditingMessageId(null);
+      setEditContent('');
+      toast.success('Message updated');
+    } catch (error) {
+      toast.error('Failed to edit message');
+    }
+  };
+
+  // Delete message
+  const deleteMessage = async (messageId) => {
+    if (!selectedConv) return;
+    try {
+      await axios.delete(`${API}/chat/conversations/${selectedConv.id}/messages/${messageId}`);
+      setMessages(prev => prev.map(m =>
+        m.id === messageId
+          ? { ...m, is_deleted: true, content: 'This message was deleted' }
+          : m
+      ));
+      setMessageMenuId(null);
+      toast.success('Message deleted');
+    } catch (error) {
+      toast.error('Failed to delete message');
+    }
+  };
+
+  // Reply to message
+  const handleReply = (message) => {
+    setReplyingTo({
+      id: message.id,
+      content: message.content,
+      sender_name: message.sender_name
+    });
+    setMessageMenuId(null);
+  };
+
+  // Clear reply
+  const clearReply = () => {
+    setReplyingTo(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -351,9 +420,9 @@ const Chat = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex" data-testid="chat-page">
+    <div className="h-[calc(100vh-8rem)] flex flex-col md:flex-row" data-testid="chat-page">
       {/* Conversations List */}
-      <div className="w-80 bg-white border-r border-slate-200 flex flex-col">
+      <div className={`${activePanel === 'chat' ? 'hidden md:flex' : 'flex'} w-full md:w-80 bg-white border-r border-slate-200 flex-col`}>
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-heading font-bold text-text-primary">Messages</h2>
@@ -448,13 +517,20 @@ const Chat = () => {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col bg-slate-50">
+      <div className={`${activePanel === 'conversations' ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-slate-50`}>
         {selectedConv ? (
           <>
             {/* Chat Header */}
             <div className="bg-white border-b border-slate-200 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setActivePanel('conversations')}
+                    className="md:hidden p-2 hover:bg-slate-100 rounded-md transition-colors"
+                    title="Back to conversations"
+                  >
+                    <ArrowLeft size={20} className="text-primary" />
+                  </button>
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     selectedConv.is_group ? 'bg-purple-100' : 'bg-primary/20'
                   }`}>
@@ -506,7 +582,33 @@ const Chat = () => {
                     
                     {/* Message Menu */}
                     {messageMenuId === message.id && (
-                      <div className={`absolute top-6 ${message.sender_id === user.id ? '-left-20' : '-right-20'} bg-white shadow-lg rounded-md py-1 z-10`}>
+                      <div className={`absolute top-6 ${message.sender_id === user.id ? '-left-20' : '-right-20'} bg-white shadow-lg rounded-md py-1 z-10 min-w-max`}>
+                        {message.sender_id === user.id && !message.is_deleted && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingMessageId(message.id);
+                                setEditContent(message.content);
+                                setMessageMenuId(null);
+                              }}
+                              className="w-full px-4 py-2 text-sm text-left hover:bg-slate-100 flex items-center gap-2"
+                            >
+                              ✎ Edit
+                            </button>
+                            <button
+                              onClick={() => deleteMessage(message.id)}
+                              className="w-full px-4 py-2 text-sm text-left hover:bg-slate-100 flex items-center gap-2 text-red-600"
+                            >
+                              ✕ Delete
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => handleReply(message)}
+                          className="w-full px-4 py-2 text-sm text-left hover:bg-slate-100 flex items-center gap-2"
+                        >
+                          ↩ Reply
+                        </button>
                         <button
                           onClick={() => pinMessage(message.id, !message.is_pinned)}
                           className="w-full px-4 py-2 text-sm text-left hover:bg-slate-100 flex items-center gap-2"
@@ -518,8 +620,8 @@ const Chat = () => {
                     )}
                     
                     <div className={`max-w-[70%] ${
-                      message.sender_id === user.id 
-                        ? 'bg-primary text-white rounded-l-lg rounded-tr-lg' 
+                      message.sender_id === user.id
+                        ? 'bg-primary text-white rounded-l-lg rounded-tr-lg'
                         : 'bg-white text-text-primary rounded-r-lg rounded-tl-lg shadow-sm'
                     } p-3 ${message.is_pinned ? 'ring-2 ring-yellow-400' : ''}`}>
                       {message.is_pinned && (
@@ -527,11 +629,50 @@ const Chat = () => {
                           <Pin size={10} /> Pinned
                         </div>
                       )}
+
+                      {/* Reply preview */}
+                      {message.reply_to_id && (
+                        <div className={`border-l-2 pl-2 mb-2 text-xs ${
+                          message.sender_id === user.id ? 'border-white/50 opacity-80' : 'border-primary/30 opacity-75'
+                        }`}>
+                          <p className="font-semibold">{message.reply_to_sender}</p>
+                          <p className="truncate">{message.reply_to_content}</p>
+                        </div>
+                      )}
+
                       {message.sender_id !== user.id && selectedConv.is_group && (
                         <p className="text-xs font-medium mb-1 opacity-70">{message.sender_name}</p>
                       )}
-                      
-                      {message.message_type === 'attachment' && message.attachment_id ? (
+
+                      {editingMessageId === message.id && message.sender_id === user.id ? (
+                        <div className="flex flex-col gap-2">
+                          <textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="px-3 py-2 border border-slate-300 rounded text-text-primary resize-none"
+                            rows="2"
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => {
+                                setEditingMessageId(null);
+                                setEditContent('');
+                              }}
+                              className="px-2 py-1 text-xs bg-slate-200 text-text-primary rounded hover:bg-slate-300"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => editMessage(message.id, editContent)}
+                              className={`px-2 py-1 text-xs rounded ${message.sender_id === user.id ? 'bg-white text-primary hover:bg-slate-100' : 'bg-primary text-white hover:bg-primary-hover'}`}
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : message.is_deleted ? (
+                        <p className="italic opacity-60">(Message deleted)</p>
+                      ) : message.message_type === 'attachment' && message.attachment_id ? (
                         <button
                           onClick={() => downloadAttachment(message.attachment_id, message.attachment_name)}
                           className={`flex items-center gap-2 ${
@@ -550,6 +691,7 @@ const Chat = () => {
                       }`}>
                         <span className="text-xs">
                           {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {message.is_edited && ' · edited'}
                         </span>
                         {getReadStatus(message)}
                       </div>
@@ -572,6 +714,23 @@ const Chat = () => {
 
             {/* Message Input */}
             <div className="bg-white border-t border-slate-200 p-4">
+              {/* Reply preview bar */}
+              {replyingTo && (
+                <div className="mb-3 p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs text-text-secondary font-medium">Replying to {replyingTo.sender_name}</p>
+                    <p className="text-sm text-text-primary truncate">{replyingTo.content}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearReply}
+                    className="ml-2 p-1 hover:bg-slate-200 rounded"
+                  >
+                    <X size={16} className="text-text-secondary" />
+                  </button>
+                </div>
+              )}
+
               <form onSubmit={handleSendMessage} className="flex items-center gap-3">
                 <input
                   type="file"

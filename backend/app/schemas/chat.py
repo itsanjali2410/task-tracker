@@ -39,6 +39,13 @@ class MessageCreate(BaseModel):
     content: str
     message_type: str = "text"  # text or attachment
     attachment_id: Optional[str] = None
+    reply_to_id: Optional[str] = None
+    reply_to_content: Optional[str] = None
+    reply_to_sender: Optional[str] = None
+
+class MessageUpdate(BaseModel):
+    """Update message request"""
+    content: str
 
 class MessageResponse(BaseModel):
     """Message response"""
@@ -57,6 +64,12 @@ class MessageResponse(BaseModel):
     is_pinned: bool = False
     pinned_by: Optional[str] = None
     pinned_at: Optional[datetime] = None
+    is_edited: bool = False
+    edited_at: Optional[datetime] = None
+    is_deleted: bool = False
+    reply_to_id: Optional[str] = None
+    reply_to_content: Optional[str] = None
+    reply_to_sender: Optional[str] = None
 
 class ChatAttachmentResponse(BaseModel):
     """Chat attachment response"""

@@ -101,7 +101,21 @@ class ConnectionManager:
                         "message_ids": message_ids
                     }
                 })
-    
+
+    async def broadcast_message_edit(self, participant_ids: list, message_data: dict):
+        """Broadcast edited message to conversation participants"""
+        await self.send_to_users(participant_ids, {
+            "type": "message_edit",
+            "data": message_data
+        })
+
+    async def broadcast_message_delete(self, participant_ids: list, data: dict):
+        """Broadcast deleted message to conversation participants"""
+        await self.send_to_users(participant_ids, {
+            "type": "message_delete",
+            "data": data
+        })
+
     def is_user_online(self, user_id: str) -> bool:
         """Check if user has active connections"""
         return user_id in self.active_connections and len(self.active_connections[user_id]) > 0

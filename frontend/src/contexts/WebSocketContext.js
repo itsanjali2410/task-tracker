@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { toast } from 'sonner';
 
 const WebSocketContext = createContext(null);
 
@@ -91,6 +92,18 @@ export const WebSocketProvider = ({ children }) => {
             // Play sound for chat messages from others
             if (data.data.sender_id !== user?.id) {
               playNotificationSound();
+              // Show toast if not on chat page
+              if (!window.location.pathname.startsWith('/chat')) {
+                toast(`New message from ${data.data.sender_name}`, {
+                  description: data.data.content.slice(0, 60),
+                  action: {
+                    label: 'Open',
+                    onClick: () => {
+                      window.location.href = '/chat';
+                    }
+                  }
+                });
+              }
             }
             break;
           
@@ -113,10 +126,32 @@ export const WebSocketProvider = ({ children }) => {
             }));
             break;
           
+          case 'message_edit':
+            // Update existing message
+            setChatMessages(prev => ({
+              ...prev,
+              [data.data.conversation_id]: prev[data.data.conversation_id]?.map(msg =>
+                msg.id === data.data.id ? data.data : msg
+              ) || []
+            }));
+            break;
+
+          case 'message_delete':
+            // Mark message as deleted
+            setChatMessages(prev => ({
+              ...prev,
+              [data.data.conversation_id]: prev[data.data.conversation_id]?.map(msg =>
+                msg.id === data.data.message_id
+                  ? { ...msg, is_deleted: true, content: 'This message was deleted' }
+                  : msg
+              ) || []
+            }));
+            break;
+
           case 'pong':
             // Heartbeat response
             break;
-          
+
           default:
             console.log('Unknown WebSocket message:', data);
         }

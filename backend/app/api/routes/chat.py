@@ -7,7 +7,7 @@ from typing import List, Optional
 from app.schemas.chat import (
     ConversationCreate, ConversationResponse, ConversationUpdate,
     MessageCreate, MessageResponse, ChatAttachmentResponse,
-    TypingIndicator, ReadReceipt, PinConversation, PinMessage, MessageSearchResponse
+    TypingIndicator, ReadReceipt, PinConversation, PinMessage, MessageSearchResponse, MessageUpdate
 )
 from app.models.chat import ConversationInDB, MessageInDB, ChatAttachmentInDB
 from app.schemas.user import UserResponse
@@ -826,5 +826,137 @@ async def search_messages(
             created_at=msg["created_at"],
             is_pinned=msg.get("is_pinned", False)
         ))
-    
+
     return result
+
+
+@router.put("/conversations/{conversation_id}/messages/{message_id}", response_model=MessageResponse)
+async def edit_message(
+    conversation_id: str,
+    message_id: str,
+    update_data: MessageUpdate,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Edit a message (only sender can edit)"""
+    db = get_database()
+
+    # Verify conversation exists and user is participant
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Get message
+    message = await db.messages.find_one(
+        {"id": message_id, "conversation_id": conversation_id},
+        {"_id": 0}
+    )
+
+    if not message:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Message not found"
+        )
+
+    # Verify sender
+    if message["sender_id"] != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only edit your own messages"
+        )
+
+    # Update message
+    edited_at = datetime.now(timezone.utc).isoformat()
+    await db.messages.update_one(
+        {"id": message_id},
+        {"$set": {
+            "content": update_data.content,
+            "is_edited": True,
+            "edited_at": edited_at
+        }}
+    )
+
+    # Get updated message
+    updated_message = await db.messages.find_one(
+        {"id": message_id},
+        {"_id": 0}
+    )
+
+    # Convert datetime strings
+    if isinstance(updated_message.get('created_at'), str):
+        updated_message['created_at'] = datetime.fromisoformat(updated_message['created_at'])
+    if isinstance(updated_message.get('edited_at'), str):
+        updated_message['edited_at'] = datetime.fromisoformat(updated_message['edited_at'])
+
+    response = MessageResponse(
+        **updated_message,
+        is_own=True
+    )
+
+    # Broadcast edit to all participants
+    await manager.broadcast_message_edit(conv["participants"], response.model_dump(mode='json'))
+
+    return response
+
+
+@router.delete("/conversations/{conversation_id}/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_message(
+    conversation_id: str,
+    message_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Delete a message (only sender can delete)"""
+    db = get_database()
+
+    # Verify conversation exists and user is participant
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Get message
+    message = await db.messages.find_one(
+        {"id": message_id, "conversation_id": conversation_id},
+        {"_id": 0}
+    )
+
+    if not message:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Message not found"
+        )
+
+    # Verify sender
+    if message["sender_id"] != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own messages"
+        )
+
+    # Soft delete: mark as deleted
+    await db.messages.update_one(
+        {"id": message_id},
+        {"$set": {
+            "is_deleted": True,
+            "content": "This message was deleted"
+        }}
+    )
+
+    # Broadcast delete to all participants
+    await manager.broadcast_message_delete(conv["participants"], {
+        "conversation_id": conversation_id,
+        "message_id": message_id,
+        "is_deleted": True
+    })
