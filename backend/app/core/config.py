@@ -7,19 +7,19 @@ class Settings(BaseSettings):
     APP_NAME: str = "TripStars Task Management"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
-    
+
     # MongoDB
-    MONGODB_URI: str = os.getenv("MONGO_URL")
-    DB_NAME: str = os.getenv("DB_NAME")
-    
+    MONGODB_URI: str = os.getenv("MONGO_URL", "")
+    DB_NAME: str = os.getenv("DB_NAME", "")
+
     # Security - JWT
     SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "tripstars-secret-key-change-in-production")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Short-lived access token
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived refresh token
-    
-    # CORS
-    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+
+    # CORS (comma-separated string)
+    CORS_ORIGINS: str = "http://localhost:3000"
     
     # Email Configuration (Phase 4)
     EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "false").lower() == "true"

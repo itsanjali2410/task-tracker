@@ -27,10 +27,10 @@ app = FastAPI(
 )
 
 # CORS middleware
-origins = settings.CORS_ORIGINS.split(",")
+cors_origins = [s.strip() for s in settings.CORS_ORIGINS.split(",")]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
