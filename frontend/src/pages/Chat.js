@@ -426,6 +426,7 @@ const Chat = () => {
         <ConversationList
           conversations={conversations}
           selectedConv={selectedConv}
+          availableUsers={availableUsers}
           searchQuery={''}
           setSearchQuery={() => {}}
           setShowSearchModal={() => {}}
@@ -435,6 +436,7 @@ const Chat = () => {
           pinConversation={pinConversation}
           onContextMenu={handleContextMenu}
           contextMenu={contextMenu}
+          onStartDM={createDirectMessage}
         />
 
         {/* Edit Group Name Modal */}
