@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_CONFIG } from '../config/api';
 
 const AuthContext = createContext(null);
 
-// Fallback to 8000 if env is not loaded
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+// Use centralized API configuration
+const API = API_CONFIG.API_URL;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
