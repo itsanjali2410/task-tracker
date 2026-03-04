@@ -17,42 +17,48 @@ export const WebSocketProvider = ({ children }) => {
   const reconnectTimeoutRef = useRef(null);
   const notificationCacheRef = useRef(new Set());
 
-  // Sound notification
+  // Sound notification - plays a notification tone
   const playNotificationSound = useCallback(() => {
     const soundEnabled = localStorage.getItem('notificationSoundEnabled');
-    if (soundEnabled === null || JSON.parse(soundEnabled)) {
-      try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = 880;
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.15);
-        
-        setTimeout(() => {
-          const osc2 = audioContext.createOscillator();
-          const gain2 = audioContext.createGain();
-          osc2.connect(gain2);
-          gain2.connect(audioContext.destination);
-          osc2.frequency.value = 1100;
-          osc2.type = 'sine';
-          gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
-          gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-          osc2.start(audioContext.currentTime);
-          osc2.stop(audioContext.currentTime + 0.15);
-        }, 120);
-      } catch (e) {
-        console.warn('Audio not supported');
+    // Play sound if not explicitly disabled
+    if (soundEnabled === 'false') return;
+
+    try {
+      // Create audio context (resume if suspended due to browser policy)
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+      // Resume audio context if suspended
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().catch(() => {});
       }
+
+      const now = audioContext.currentTime;
+
+      // Create first beep (high frequency)
+      const osc1 = audioContext.createOscillator();
+      const gain1 = audioContext.createGain();
+      osc1.connect(gain1);
+      gain1.connect(audioContext.destination);
+      osc1.frequency.value = 1000;
+      osc1.type = 'sine';
+      gain1.gain.setValueAtTime(0.4, now);
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+      osc1.start(now);
+      osc1.stop(now + 0.12);
+
+      // Create second beep (different frequency)
+      const osc2 = audioContext.createOscillator();
+      const gain2 = audioContext.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioContext.destination);
+      osc2.frequency.value = 800;
+      osc2.type = 'sine';
+      gain2.gain.setValueAtTime(0.4, now + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.27);
+      osc2.start(now + 0.15);
+      osc2.stop(now + 0.27);
+    } catch (e) {
+      console.warn('Audio notification failed:', e);
     }
   }, []);
 

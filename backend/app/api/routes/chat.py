@@ -960,3 +960,42 @@ async def delete_message(
         "message_id": message_id,
         "is_deleted": True
     })
+
+
+@router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_conversation(
+    conversation_id: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Delete an entire conversation"""
+    db = get_database()
+
+    # Verify conversation exists and user is participant
+    conv = await db.conversations.find_one(
+        {"id": conversation_id, "participants": current_user.id},
+        {"_id": 0}
+    )
+
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    # Delete conversation and all its messages
+    await db.conversations.delete_one({"id": conversation_id})
+    await db.messages.delete_many({"conversation_id": conversation_id})
+
+    # Delete associated attachments
+    attachments = await db.chat_attachments.find(
+        {"conversation_id": conversation_id},
+        {"_id": 0, "file_path": 1}
+    ).to_list(None)
+
+    for attachment in attachments:
+        try:
+            os.remove(attachment.get("file_path", ""))
+        except:
+            pass
+
+    await db.chat_attachments.delete_many({"conversation_id": conversation_id})

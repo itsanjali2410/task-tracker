@@ -2,55 +2,53 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
-import { Send, Plus, Users, User, Paperclip, Download, Check, CheckCheck, X, Pin, Search, MoreVertical, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import ConversationList from '../components/ConversationList';
+import MessageList from '../components/MessageList';
+import MessageInput from '../components/MessageInput';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Chat = () => {
   const { user } = useAuth();
-  const { chatMessages, typingUsers, readReceipts, sendTyping, addLocalMessage } = useWebSocket();
-  
+  const { chatMessages, typingUsers, sendTyping, addLocalMessage } = useWebSocket();
+
+  // Main state
   const [conversations, setConversations] = useState([]);
   const [selectedConv, setSelectedConv] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [activePanel, setActivePanel] = useState('conversations');
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  // UI state
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [messageMenuId, setMessageMenuId] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [availableUsers, setAvailableUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [groupName, setGroupName] = useState('');
-  const [uploadingFile, setUploadingFile] = useState(false);
-  
-  // Search and pin state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [pinnedMessages, setPinnedMessages] = useState([]);
-  const [showPinnedMessages, setShowPinnedMessages] = useState(false);
-  const [messageMenuId, setMessageMenuId] = useState(null);
-
-  // Edit/Delete/Reply state
-  const [editingMessageId, setEditingMessageId] = useState(null);
-  const [editContent, setEditContent] = useState('');
-  const [replyingTo, setReplyingTo] = useState(null);
-  const [activePanel, setActivePanel] = useState('conversations');
+  const [editingGroupId, setEditingGroupId] = useState(null);
+  const [editingGroupName, setEditingGroupName] = useState('');
 
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Fetch conversations
+  // Fetch data
   useEffect(() => {
     fetchConversations();
     fetchAvailableUsers();
   }, []);
 
-  // Merge WebSocket messages with local messages
+  // Merge WebSocket messages
   useEffect(() => {
     if (selectedConv && chatMessages[selectedConv.id]) {
       setMessages(prev => {
@@ -62,11 +60,12 @@ const Chat = () => {
     }
   }, [chatMessages, selectedConv]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // API calls
   const fetchConversations = async () => {
     try {
       const response = await axios.get(`${API}/chat/conversations`);
@@ -91,12 +90,11 @@ const Chat = () => {
     try {
       const response = await axios.get(`${API}/chat/conversations/${conversationId}/messages`);
       setMessages(response.data);
-      
-      // Mark messages as read
+
       const unreadIds = response.data
         .filter(m => m.sender_id !== user.id && !m.read_by.includes(user.id))
         .map(m => m.id);
-      
+
       if (unreadIds.length > 0) {
         await axios.post(`${API}/chat/conversations/${conversationId}/read`, {
           message_ids: unreadIds
@@ -107,12 +105,7 @@ const Chat = () => {
     }
   };
 
-  const selectConversation = (conv) => {
-    setSelectedConv(conv);
-    fetchMessages(conv.id);
-    setActivePanel('chat'); // Show chat on mobile
-  };
-
+  // Message operations
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedConv) return;
@@ -121,27 +114,23 @@ const Chat = () => {
     try {
       const messageData = {
         content: newMessage,
-        message_type: 'text'
+        message_type: 'text',
+        ...(replyingTo && {
+          reply_to_id: replyingTo.id,
+          reply_to_content: replyingTo.content,
+          reply_to_sender: replyingTo.sender_name
+        })
       };
-
-      // Add reply info if replying
-      if (replyingTo) {
-        messageData.reply_to_id = replyingTo.id;
-        messageData.reply_to_content = replyingTo.content;
-        messageData.reply_to_sender = replyingTo.sender_name;
-      }
 
       const response = await axios.post(
         `${API}/chat/conversations/${selectedConv.id}/messages`,
         messageData
       );
 
-      // Add to local messages (WebSocket will also receive it)
       addLocalMessage(selectedConv.id, response.data);
       setNewMessage('');
       clearReply();
 
-      // Update conversation last message
       setConversations(prev => prev.map(c =>
         c.id === selectedConv.id
           ? { ...c, last_message: newMessage.slice(0, 100), last_message_at: new Date().toISOString() }
@@ -154,39 +143,193 @@ const Chat = () => {
     }
   };
 
+  const editMessage = async (messageId, content) => {
+    if (!selectedConv) return;
+    try {
+      const response = await axios.put(
+        `${API}/chat/conversations/${selectedConv.id}/messages/${messageId}`,
+        { content }
+      );
+      setMessages(prev => prev.map(m => m.id === messageId ? response.data : m));
+      setEditingMessageId(null);
+      setEditContent('');
+      toast.success('Message updated');
+    } catch (error) {
+      toast.error('Failed to edit message');
+    }
+  };
+
+  const deleteMessage = async (messageId) => {
+    if (!selectedConv) return;
+    try {
+      await axios.delete(`${API}/chat/conversations/${selectedConv.id}/messages/${messageId}`);
+      setMessages(prev => prev.map(m =>
+        m.id === messageId ? { ...m, is_deleted: true, content: 'This message was deleted' } : m
+      ));
+      setMessageMenuId(null);
+      toast.success('Message deleted');
+    } catch (error) {
+      toast.error('Failed to delete message');
+    }
+  };
+
+  // Conversation operations
+  const selectConversation = (conv) => {
+    setSelectedConv(conv);
+    fetchMessages(conv.id);
+    setActivePanel('chat');
+  };
+
+  const deleteConversation = async (convId) => {
+    try {
+      await axios.delete(`${API}/chat/conversations/${convId}`);
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      if (selectedConv?.id === convId) {
+        setSelectedConv(null);
+        setActivePanel('conversations');
+      }
+      toast.success('Conversation deleted');
+    } catch (error) {
+      toast.error('Failed to delete conversation');
+    }
+  };
+
+  const updateGroupName = async (convId, newName) => {
+    if (!newName.trim()) {
+      toast.error('Group name cannot be empty');
+      return;
+    }
+
+    try {
+      await axios.patch(`${API}/chat/conversations/${convId}`, { name: newName });
+      setConversations(prev => prev.map(c =>
+        c.id === convId ? { ...c, name: newName } : c
+      ));
+      if (selectedConv?.id === convId) {
+        setSelectedConv({ ...selectedConv, name: newName });
+      }
+      setEditingGroupId(null);
+      toast.success('Group name updated');
+    } catch (error) {
+      toast.error('Failed to update group name');
+    }
+  };
+
+  // UI handlers
+  const selectConversation_withReset = (conv) => {
+    selectConversation(conv);
+    setContextMenu(null);
+  };
+
   const handleTyping = useCallback((e) => {
     setNewMessage(e.target.value);
-    
     if (selectedConv) {
       sendTyping(selectedConv.id, true);
-      
-      // Clear previous timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      
-      // Stop typing indicator after 2 seconds of no input
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
         sendTyping(selectedConv.id, false);
       }, 2000);
     }
   }, [selectedConv, sendTyping]);
 
+  const handleContextMenu = (e, conv) => {
+    e.preventDefault();
+    setContextMenu({
+      convId: conv.id,
+      x: e.clientX,
+      y: e.clientY,
+      close: () => setContextMenu(null)
+    });
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedConv) return;
+
+    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.mp3', '.wav', '.m4a'];
+    const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedTypes.includes(fileExt)) {
+      toast.error(`File type not allowed`);
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const attachmentRes = await axios.post(
+        `${API}/chat/conversations/${selectedConv.id}/attachments`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      const response = await axios.post(
+        `${API}/chat/conversations/${selectedConv.id}/messages`,
+        {
+          content: file.name,
+          message_type: 'attachment',
+          attachment_id: attachmentRes.data.id
+        }
+      );
+
+      addLocalMessage(selectedConv.id, response.data);
+      toast.success('File sent');
+    } catch (error) {
+      toast.error('Failed to upload file');
+    } finally {
+      setUploadingFile(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleVoiceMessage = async (audioBlob) => {
+    if (!selectedConv) return;
+    try {
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'voice-message.webm');
+
+      const attachmentRes = await axios.post(
+        `${API}/chat/conversations/${selectedConv.id}/attachments`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      const response = await axios.post(
+        `${API}/chat/conversations/${selectedConv.id}/messages`,
+        {
+          content: '🎤 Voice message',
+          message_type: 'attachment',
+          attachment_id: attachmentRes.data.id
+        }
+      );
+
+      addLocalMessage(selectedConv.id, response.data);
+      toast.success('Voice message sent');
+    } catch (error) {
+      toast.error('Failed to send voice message');
+    }
+  };
+
+  const getReadStatus = (message) => {
+    if (message.sender_id !== user.id) return null;
+    return message.read_by.length > 1 ? '✓✓' : '✓';
+  };
+
+  // Modals
   const createDirectMessage = async (userId) => {
     try {
       const response = await axios.post(`${API}/chat/conversations`, {
         participant_ids: [userId],
         is_group: false
       });
-      
+
       setConversations(prev => {
         const exists = prev.find(c => c.id === response.data.id);
-        if (exists) return prev;
-        return [response.data, ...prev];
+        return exists ? prev : [response.data, ...prev];
       });
-      
-      setSelectedConv(response.data);
-      fetchMessages(response.data.id);
+
+      selectConversation(response.data);
       setShowNewChatModal(false);
       toast.success('Conversation created');
     } catch (error) {
@@ -206,10 +349,9 @@ const Chat = () => {
         participant_ids: selectedUsers,
         is_group: true
       });
-      
+
       setConversations(prev => [response.data, ...prev]);
-      setSelectedConv(response.data);
-      fetchMessages(response.data.id);
+      selectConversation(response.data);
       setShowNewGroupModal(false);
       setGroupName('');
       setSelectedUsers([]);
@@ -219,79 +361,10 @@ const Chat = () => {
     }
   };
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedConv) return;
-
-    // Validate file
-    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
-    const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    if (!allowedTypes.includes(fileExt)) {
-      toast.error(`File type not allowed. Allowed: ${allowedTypes.join(', ')}`);
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('File size must be less than 10MB');
-      return;
-    }
-
-    setUploadingFile(true);
-    try {
-      // Upload file
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const uploadRes = await axios.post(
-        `${API}/chat/conversations/${selectedConv.id}/attachments`,
-        formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
-      );
-
-      // Send message with attachment
-      const msgRes = await axios.post(
-        `${API}/chat/conversations/${selectedConv.id}/messages`,
-        {
-          content: `📎 ${file.name}`,
-          message_type: 'attachment',
-          attachment_id: uploadRes.data.id
-        }
-      );
-
-      addLocalMessage(selectedConv.id, msgRes.data);
-      toast.success('File sent');
-    } catch (error) {
-      toast.error('Failed to upload file');
-    } finally {
-      setUploadingFile(false);
-      e.target.value = '';
-    }
-  };
-
-  const downloadAttachment = async (attachmentId, fileName) => {
-    try {
-      const response = await axios.get(`${API}/chat/attachments/${attachmentId}/download`, {
-        responseType: 'blob'
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      toast.error('Failed to download file');
-    }
-  };
-
-  // Pin conversation
   const pinConversation = async (convId, shouldPin) => {
     try {
       await axios.post(`${API}/chat/conversations/${convId}/pin`, { pin: shouldPin });
-      setConversations(prev => prev.map(c => 
+      setConversations(prev => prev.map(c =>
         c.id === convId ? { ...c, is_pinned: shouldPin } : c
       ).sort((a, b) => {
         if (a.is_pinned && !b.is_pinned) return -1;
@@ -304,689 +377,211 @@ const Chat = () => {
     }
   };
 
-  // Pin message
-  const pinMessage = async (messageId, shouldPin) => {
-    if (!selectedConv) return;
+  const handleDownloadAttachment = async (attachmentId, fileName) => {
     try {
-      await axios.post(`${API}/chat/conversations/${selectedConv.id}/messages/${messageId}/pin`, { pin: shouldPin });
-      setMessages(prev => prev.map(m => 
-        m.id === messageId ? { ...m, is_pinned: shouldPin } : m
-      ));
-      setMessageMenuId(null);
-      toast.success(shouldPin ? 'Message pinned' : 'Message unpinned');
+      const response = await axios.get(`${API}/chat/attachments/${attachmentId}/download`, {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     } catch (error) {
-      toast.error('Failed to pin message');
+      toast.error('Failed to download file');
     }
   };
 
-  // Fetch pinned messages
-  const fetchPinnedMessages = async () => {
-    if (!selectedConv) return;
-    try {
-      const response = await axios.get(`${API}/chat/conversations/${selectedConv.id}/pinned-messages`);
-      setPinnedMessages(response.data);
-      setShowPinnedMessages(true);
-    } catch (error) {
-      toast.error('Failed to fetch pinned messages');
-    }
-  };
+  // Event listeners for custom events
+  useEffect(() => {
+    const handleEditGroup = (e) => {
+      const conv = e.detail;
+      setEditingGroupId(conv.id);
+      setEditingGroupName(conv.name);
+    };
 
-  // Search messages
-  const searchMessages = async () => {
-    if (!searchQuery.trim()) return;
-    setSearching(true);
-    try {
-      const params = new URLSearchParams({ q: searchQuery });
-      if (selectedConv) params.append('conversation_id', selectedConv.id);
-      const response = await axios.get(`${API}/chat/search?${params}`);
-      setSearchResults(response.data);
-    } catch (error) {
-      toast.error('Search failed');
-    } finally {
-      setSearching(false);
-    }
-  };
+    const handleDeleteConv = (e) => {
+      const conv = e.detail;
+      if (window.confirm(`Delete chat "${conv.name || conv.participant_names[0]}"?`)) {
+        deleteConversation(conv.id);
+      }
+    };
 
-  const getConversationName = (conv) => {
-    if (conv.is_group) return conv.name;
-    const otherName = conv.participant_names.find((_, i) => conv.participants[i] !== user.id);
-    return otherName || 'Unknown';
-  };
+    window.addEventListener('editGroupName', handleEditGroup);
+    window.addEventListener('deleteConversation', handleDeleteConv);
 
-  const getReadStatus = (message) => {
-    if (message.sender_id !== user.id) return null;
-    const otherReaders = message.read_by.filter(id => id !== user.id);
-    if (otherReaders.length > 0) {
-      return <CheckCheck size={14} className="text-blue-500" />;
-    }
-    return <Check size={14} className="text-slate-400" />;
-  };
-
-  // Edit message
-  const editMessage = async (messageId, content) => {
-    if (!selectedConv) return;
-    try {
-      const response = await axios.put(
-        `${API}/chat/conversations/${selectedConv.id}/messages/${messageId}`,
-        { content }
-      );
-      setMessages(prev => prev.map(m => m.id === messageId ? response.data : m));
-      setEditingMessageId(null);
-      setEditContent('');
-      toast.success('Message updated');
-    } catch (error) {
-      toast.error('Failed to edit message');
-    }
-  };
-
-  // Delete message
-  const deleteMessage = async (messageId) => {
-    if (!selectedConv) return;
-    try {
-      await axios.delete(`${API}/chat/conversations/${selectedConv.id}/messages/${messageId}`);
-      setMessages(prev => prev.map(m =>
-        m.id === messageId
-          ? { ...m, is_deleted: true, content: 'This message was deleted' }
-          : m
-      ));
-      setMessageMenuId(null);
-      toast.success('Message deleted');
-    } catch (error) {
-      toast.error('Failed to delete message');
-    }
-  };
-
-  // Reply to message
-  const handleReply = (message) => {
-    setReplyingTo({
-      id: message.id,
-      content: message.content,
-      sender_name: message.sender_name
-    });
-    setMessageMenuId(null);
-  };
-
-  // Clear reply
-  const clearReply = () => {
-    setReplyingTo(null);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+    return () => {
+      window.removeEventListener('editGroupName', handleEditGroup);
+      window.removeEventListener('deleteConversation', handleDeleteConv);
+    };
+  }, []);
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col md:flex-row" data-testid="chat-page">
-      {/* Conversations List */}
-      <div className={`${activePanel === 'chat' ? 'hidden md:flex' : 'flex'} w-full md:w-80 bg-white border-r border-slate-200 flex-col`}>
-        <div className="p-4 border-b border-slate-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-heading font-bold text-text-primary">Messages</h2>
-            <div className="flex gap-2">
+    <div className="h-[calc(100vh-8rem)] flex flex-col md:flex-row">
+      {/* Left Panel */}
+      <div className={`${activePanel === 'chat' ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-80`}>
+        <ConversationList
+          conversations={conversations}
+          selectedConv={selectedConv}
+          searchQuery={''}
+          setSearchQuery={() => {}}
+          setShowSearchModal={() => {}}
+          setShowNewChatModal={setShowNewChatModal}
+          setShowNewGroupModal={setShowNewGroupModal}
+          selectConversation={selectConversation_withReset}
+          pinConversation={pinConversation}
+          onContextMenu={handleContextMenu}
+          contextMenu={contextMenu}
+        />
+
+        {/* Edit Group Name Modal */}
+        {editingGroupId && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h2 className="text-xl font-bold mb-4">Edit Group Name</h2>
+              <input
+                type="text"
+                value={editingGroupName}
+                onChange={(e) => setEditingGroupName(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-primary mb-4"
+              />
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setEditingGroupId(null)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => updateGroupName(editingGroupId, editingGroupName)}
+                  className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-hover"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* New Chat Modal */}
+        {showNewChatModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-96 overflow-y-auto">
+              <h2 className="text-xl font-bold mb-4">Start New Chat</h2>
+              {availableUsers.map(u => (
+                <button
+                  key={u.id}
+                  onClick={() => createDirectMessage(u.id)}
+                  className="w-full text-left p-3 hover:bg-slate-100 rounded border-b border-slate-100"
+                >
+                  <p className="font-medium">{u.full_name}</p>
+                  <p className="text-sm text-text-secondary">{u.email}</p>
+                </button>
+              ))}
               <button
-                onClick={() => setShowSearchModal(true)}
-                className="p-2 hover:bg-slate-100 rounded-md transition-colors"
-                title="Search Messages"
-                data-testid="search-btn"
+                onClick={() => setShowNewChatModal(false)}
+                className="w-full mt-4 px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
               >
-                <Search size={20} className="text-primary" />
-              </button>
-              <button
-                onClick={() => setShowNewChatModal(true)}
-                className="p-2 hover:bg-slate-100 rounded-md transition-colors"
-                title="New Chat"
-                data-testid="new-chat-btn"
-              >
-                <User size={20} className="text-primary" />
-              </button>
-              <button
-                onClick={() => setShowNewGroupModal(true)}
-                className="p-2 hover:bg-slate-100 rounded-md transition-colors"
-                title="New Group"
-                data-testid="new-group-btn"
-              >
-                <Users size={20} className="text-primary" />
+                Cancel
               </button>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="flex-1 overflow-y-auto">
-          {conversations.length === 0 ? (
-            <div className="text-center py-8 text-text-secondary">
-              <p>No conversations yet</p>
-              <p className="text-sm mt-2">Start a new chat!</p>
-            </div>
-          ) : (
-            conversations.map(conv => (
-              <div
-                key={conv.id}
-                className={`p-4 border-b border-slate-100 cursor-pointer transition-colors ${
-                  selectedConv?.id === conv.id ? 'bg-primary/10' : 'hover:bg-slate-50'
-                }`}
-                data-testid={`conv-${conv.id}`}
-              >
-                <div className="flex items-center gap-3" onClick={() => selectConversation(conv)}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    conv.is_group ? 'bg-purple-100' : 'bg-primary/20'
-                  }`}>
-                    {conv.is_group ? (
-                      <Users size={20} className="text-purple-600" />
-                    ) : (
-                      <span className="text-primary font-semibold">
-                        {getConversationName(conv).charAt(0)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        {conv.is_pinned && <Pin size={12} className="text-primary" />}
-                        <span className="font-medium text-text-primary truncate">
-                          {getConversationName(conv)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {conv.unread_count > 0 && (
-                          <span className="bg-primary text-white text-xs rounded-full px-2 py-0.5">
-                            {conv.unread_count}
-                          </span>
-                        )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); pinConversation(conv.id, !conv.is_pinned); }}
-                          className={`p-1 rounded hover:bg-slate-200 ${conv.is_pinned ? 'text-primary' : 'text-slate-400'}`}
-                          title={conv.is_pinned ? 'Unpin' : 'Pin'}
-                        >
-                          <Pin size={14} />
-                        </button>
-                      </div>
+        {/* New Group Modal */}
+        {showNewGroupModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h2 className="text-xl font-bold mb-4">Create Group</h2>
+              <input
+                type="text"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="Group name"
+                className="w-full px-4 py-2 border border-slate-200 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <div className="max-h-40 overflow-y-auto mb-4 border border-slate-200 rounded">
+                {availableUsers.map(u => (
+                  <label key={u.id} className="flex items-center p-3 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.includes(u.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedUsers([...selectedUsers, u.id]);
+                        } else {
+                          setSelectedUsers(selectedUsers.filter(id => id !== u.id));
+                        }
+                      }}
+                      className="w-4 h-4 text-primary rounded focus:ring-2"
+                    />
+                    <div className="ml-3">
+                      <p className="font-medium">{u.full_name}</p>
+                      <p className="text-sm text-text-secondary">{u.email}</p>
                     </div>
-                    {conv.last_message && (
-                      <p className="text-sm text-text-secondary truncate">{conv.last_message}</p>
-                    )}
-                  </div>
-                </div>
+                  </label>
+                ))}
               </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Chat Area */}
-      <div className={`${activePanel === 'conversations' ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-slate-50`}>
-        {selectedConv ? (
-          <>
-            {/* Chat Header */}
-            <div className="bg-white border-b border-slate-200 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setActivePanel('conversations')}
-                    className="md:hidden p-2 hover:bg-slate-100 rounded-md transition-colors"
-                    title="Back to conversations"
-                  >
-                    <ArrowLeft size={20} className="text-primary" />
-                  </button>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    selectedConv.is_group ? 'bg-purple-100' : 'bg-primary/20'
-                  }`}>
-                    {selectedConv.is_group ? (
-                      <Users size={20} className="text-purple-600" />
-                    ) : (
-                      <span className="text-primary font-semibold">
-                        {getConversationName(selectedConv).charAt(0)}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-text-primary">{getConversationName(selectedConv)}</h3>
-                    {selectedConv.is_group && (
-                      <p className="text-sm text-text-secondary">
-                        {selectedConv.participants.length} members
-                      </p>
-                    )}
-                  </div>
-                </div>
+              <div className="flex gap-3 justify-end">
                 <button
-                  onClick={fetchPinnedMessages}
-                  className="p-2 hover:bg-slate-100 rounded-md transition-colors flex items-center gap-1"
-                  title="View Pinned Messages"
-                  data-testid="view-pinned-btn"
+                  onClick={() => setShowNewGroupModal(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
                 >
-                  <Pin size={18} className="text-primary" />
-                  <span className="text-sm text-text-secondary">Pinned</span>
+                  Cancel
+                </button>
+                <button
+                  onClick={createGroupChat}
+                  className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-hover"
+                >
+                  Create
                 </button>
               </div>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map(message => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'} group`}
-                  data-testid={`message-${message.id}`}
-                >
-                  <div className="relative">
-                    {/* Message Menu Button */}
-                    <button
-                      onClick={() => setMessageMenuId(messageMenuId === message.id ? null : message.id)}
-                      className={`absolute -top-1 ${message.sender_id === user.id ? '-left-6' : '-right-6'} opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-opacity`}
-                    >
-                      <MoreVertical size={14} className="text-slate-500" />
-                    </button>
-                    
-                    {/* Message Menu */}
-                    {messageMenuId === message.id && (
-                      <div className={`absolute top-6 ${message.sender_id === user.id ? '-left-20' : '-right-20'} bg-white shadow-lg rounded-md py-1 z-10 min-w-max`}>
-                        {message.sender_id === user.id && !message.is_deleted && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setEditingMessageId(message.id);
-                                setEditContent(message.content);
-                                setMessageMenuId(null);
-                              }}
-                              className="w-full px-4 py-2 text-sm text-left hover:bg-slate-100 flex items-center gap-2"
-                            >
-                              ✎ Edit
-                            </button>
-                            <button
-                              onClick={() => deleteMessage(message.id)}
-                              className="w-full px-4 py-2 text-sm text-left hover:bg-slate-100 flex items-center gap-2 text-red-600"
-                            >
-                              ✕ Delete
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => handleReply(message)}
-                          className="w-full px-4 py-2 text-sm text-left hover:bg-slate-100 flex items-center gap-2"
-                        >
-                          ↩ Reply
-                        </button>
-                        <button
-                          onClick={() => pinMessage(message.id, !message.is_pinned)}
-                          className="w-full px-4 py-2 text-sm text-left hover:bg-slate-100 flex items-center gap-2"
-                        >
-                          <Pin size={14} />
-                          {message.is_pinned ? 'Unpin' : 'Pin'}
-                        </button>
-                      </div>
-                    )}
-                    
-                    <div className={`max-w-[70%] ${
-                      message.sender_id === user.id
-                        ? 'bg-primary text-white rounded-l-lg rounded-tr-lg'
-                        : 'bg-white text-text-primary rounded-r-lg rounded-tl-lg shadow-sm'
-                    } p-3 ${message.is_pinned ? 'ring-2 ring-yellow-400' : ''}`}>
-                      {message.is_pinned && (
-                        <div className={`flex items-center gap-1 text-xs mb-1 ${message.sender_id === user.id ? 'text-white/70' : 'text-yellow-600'}`}>
-                          <Pin size={10} /> Pinned
-                        </div>
-                      )}
-
-                      {/* Reply preview */}
-                      {message.reply_to_id && (
-                        <div className={`border-l-2 pl-2 mb-2 text-xs ${
-                          message.sender_id === user.id ? 'border-white/50 opacity-80' : 'border-primary/30 opacity-75'
-                        }`}>
-                          <p className="font-semibold">{message.reply_to_sender}</p>
-                          <p className="truncate">{message.reply_to_content}</p>
-                        </div>
-                      )}
-
-                      {message.sender_id !== user.id && selectedConv.is_group && (
-                        <p className="text-xs font-medium mb-1 opacity-70">{message.sender_name}</p>
-                      )}
-
-                      {editingMessageId === message.id && message.sender_id === user.id ? (
-                        <div className="flex flex-col gap-2">
-                          <textarea
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                            className="px-3 py-2 border border-slate-300 rounded text-text-primary resize-none"
-                            rows="2"
-                          />
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => {
-                                setEditingMessageId(null);
-                                setEditContent('');
-                              }}
-                              className="px-2 py-1 text-xs bg-slate-200 text-text-primary rounded hover:bg-slate-300"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={() => editMessage(message.id, editContent)}
-                              className={`px-2 py-1 text-xs rounded ${message.sender_id === user.id ? 'bg-white text-primary hover:bg-slate-100' : 'bg-primary text-white hover:bg-primary-hover'}`}
-                            >
-                              Save
-                            </button>
-                          </div>
-                        </div>
-                      ) : message.is_deleted ? (
-                        <p className="italic opacity-60">(Message deleted)</p>
-                      ) : message.message_type === 'attachment' && message.attachment_id ? (
-                        <button
-                          onClick={() => downloadAttachment(message.attachment_id, message.attachment_name)}
-                          className={`flex items-center gap-2 ${
-                            message.sender_id === user.id ? 'text-white/90 hover:text-white' : 'text-primary hover:text-primary-hover'
-                          }`}
-                        >
-                          <Download size={16} />
-                          <span className="underline">{message.attachment_name || 'Download'}</span>
-                        </button>
-                      ) : (
-                        <p className="break-words">{message.content}</p>
-                      )}
-                      
-                      <div className={`flex items-center justify-end gap-1 mt-1 ${
-                        message.sender_id === user.id ? 'text-white/70' : 'text-text-secondary'
-                      }`}>
-                        <span className="text-xs">
-                          {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          {message.is_edited && ' · edited'}
-                        </span>
-                        {getReadStatus(message)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              
-              {/* Typing Indicator */}
-              {typingUsers[selectedConv.id] && (
-                <div className="flex justify-start">
-                  <div className="bg-white text-text-secondary rounded-lg p-3 shadow-sm">
-                    <p className="text-sm italic">{typingUsers[selectedConv.id].user_name} is typing...</p>
-                  </div>
-                </div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Message Input */}
-            <div className="bg-white border-t border-slate-200 p-4">
-              {/* Reply preview bar */}
-              {replyingTo && (
-                <div className="mb-3 p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-xs text-text-secondary font-medium">Replying to {replyingTo.sender_name}</p>
-                    <p className="text-sm text-text-primary truncate">{replyingTo.content}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={clearReply}
-                    className="ml-2 p-1 hover:bg-slate-200 rounded"
-                  >
-                    <X size={16} className="text-text-secondary" />
-                  </button>
-                </div>
-              )}
-
-              <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingFile}
-                  className="p-2 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-50"
-                  title="Attach file"
-                  data-testid="attach-btn"
-                >
-                  <Paperclip size={20} className="text-text-secondary" />
-                </button>
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={handleTyping}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-2 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-primary"
-                  disabled={sendingMessage}
-                  data-testid="message-input"
-                />
-                <button
-                  type="submit"
-                  disabled={sendingMessage || !newMessage.trim()}
-                  className="p-2 bg-primary hover:bg-primary-hover text-white rounded-full transition-colors disabled:opacity-50"
-                  data-testid="send-btn"
-                >
-                  <Send size={20} />
-                </button>
-              </form>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-text-secondary">
-            <div className="text-center">
-              <Users size={48} className="mx-auto mb-4 opacity-50" />
-              <p>Select a conversation to start chatting</p>
             </div>
           </div>
         )}
       </div>
 
-      {/* New Chat Modal */}
-      {showNewChatModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-heading font-semibold text-text-primary">New Chat</h3>
-              <button onClick={() => setShowNewChatModal(false)} className="p-1 hover:bg-slate-100 rounded">
-                <X size={20} />
-              </button>
-            </div>
-            <p className="text-text-secondary mb-4">Select a user to start chatting</p>
-            <div className="max-h-64 overflow-y-auto space-y-2">
-              {availableUsers.map(u => (
-                <button
-                  key={u.id}
-                  onClick={() => createDirectMessage(u.id)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors text-left"
-                  data-testid={`user-${u.id}`}
-                >
-                  <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                    <span className="text-primary font-semibold">{u.full_name.charAt(0)}</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-text-primary">{u.full_name}</p>
-                    <p className="text-sm text-text-secondary">{u.email}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Right Panel */}
+      <div className={`${activePanel === 'conversations' ? 'hidden md:flex' : 'flex'} flex-1 flex-col`}>
+        <MessageList
+          messages={messages}
+          user={user}
+          selectedConv={selectedConv}
+          editingMessageId={editingMessageId}
+          editContent={editContent}
+          messageMenuId={messageMenuId}
+          typingUsers={typingUsers}
+          messagesEndRef={messagesEndRef}
+          setActivePanel={setActivePanel}
+          setEditingMessageId={setEditingMessageId}
+          setEditContent={setEditContent}
+          setMessageMenuId={setMessageMenuId}
+          onEditMessage={editMessage}
+          onDeleteMessage={deleteMessage}
+          onReply={(msg) => setReplyingTo({ id: msg.id, content: msg.content, sender_name: msg.sender_name })}
+          onPinMessage={() => {}}
+          onDownloadAttachment={handleDownloadAttachment}
+          getReadStatus={getReadStatus}
+        />
 
-      {/* New Group Modal */}
-      {showNewGroupModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-heading font-semibold text-text-primary">Create Group</h3>
-              <button onClick={() => { setShowNewGroupModal(false); setSelectedUsers([]); setGroupName(''); }} className="p-1 hover:bg-slate-100 rounded">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-text-primary mb-2">Group Name</label>
-              <input
-                type="text"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder="Enter group name"
-                className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                data-testid="group-name-input"
-              />
-            </div>
-            
-            <p className="text-sm text-text-secondary mb-2">Select members ({selectedUsers.length} selected)</p>
-            <div className="max-h-48 overflow-y-auto space-y-2 mb-4">
-              {availableUsers.map(u => (
-                <label
-                  key={u.id}
-                  className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-lg cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.includes(u.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedUsers(prev => [...prev, u.id]);
-                      } else {
-                        setSelectedUsers(prev => prev.filter(id => id !== u.id));
-                      }
-                    }}
-                    className="rounded border-slate-300 text-primary focus:ring-primary"
-                  />
-                  <div className="flex-1">
-                    <p className="font-medium text-text-primary">{u.full_name}</p>
-                    <p className="text-sm text-text-secondary">{u.role}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setShowNewGroupModal(false); setSelectedUsers([]); setGroupName(''); }}
-                className="flex-1 px-4 py-2 border border-slate-200 text-text-primary rounded-md hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={createGroupChat}
-                disabled={!groupName.trim() || selectedUsers.length < 2}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-md disabled:opacity-50"
-                data-testid="create-group-btn"
-              >
-                Create Group
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Search Modal */}
-      {showSearchModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-heading font-semibold text-text-primary">Search Messages</h3>
-              <button onClick={() => { setShowSearchModal(false); setSearchResults([]); setSearchQuery(''); }} className="p-1 hover:bg-slate-100 rounded">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && searchMessages()}
-                placeholder="Search in messages..."
-                className="flex-1 px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                data-testid="search-input"
-              />
-              <button
-                onClick={searchMessages}
-                disabled={searching || !searchQuery.trim()}
-                className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-md disabled:opacity-50"
-              >
-                {searching ? 'Searching...' : 'Search'}
-              </button>
-            </div>
-            
-            <p className="text-sm text-text-secondary mb-2">
-              {selectedConv ? `Searching in: ${getConversationName(selectedConv)}` : 'Searching all conversations'}
-            </p>
-            
-            <div className="max-h-80 overflow-y-auto space-y-2">
-              {searchResults.length === 0 ? (
-                <p className="text-center text-text-secondary py-4">
-                  {searchQuery ? 'No messages found' : 'Enter a search term'}
-                </p>
-              ) : (
-                searchResults.map(result => (
-                  <div
-                    key={result.id}
-                    className="p-3 bg-slate-50 rounded-lg hover:bg-slate-100 cursor-pointer"
-                    onClick={() => {
-                      const conv = conversations.find(c => c.id === result.conversation_id);
-                      if (conv) {
-                        selectConversation(conv);
-                        setShowSearchModal(false);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-primary">{result.conversation_name}</span>
-                      <span className="text-xs text-text-secondary">
-                        {new Date(result.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-text-primary">{result.content}</p>
-                    <p className="text-xs text-text-secondary mt-1">by {result.sender_name}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pinned Messages Modal */}
-      {showPinnedMessages && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-heading font-semibold text-text-primary">Pinned Messages</h3>
-              <button onClick={() => setShowPinnedMessages(false)} className="p-1 hover:bg-slate-100 rounded">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="max-h-80 overflow-y-auto space-y-3">
-              {pinnedMessages.length === 0 ? (
-                <p className="text-center text-text-secondary py-4">No pinned messages</p>
-              ) : (
-                pinnedMessages.map(msg => (
-                  <div key={msg.id} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-text-primary">{msg.sender_name}</span>
-                      <button
-                        onClick={() => pinMessage(msg.id, false)}
-                        className="text-xs text-red-500 hover:text-red-700"
-                      >
-                        Unpin
-                      </button>
-                    </div>
-                    <p className="text-sm text-text-primary">{msg.content}</p>
-                    <p className="text-xs text-text-secondary mt-1">
-                      {new Date(msg.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+        {selectedConv && (
+          <MessageInput
+            newMessage={newMessage}
+            setNewMessage={setNewMessage}
+            replyingTo={replyingTo}
+            clearReply={() => setReplyingTo(null)}
+            onSendMessage={handleSendMessage}
+            onFileUpload={handleFileUpload}
+            onTyping={handleTyping}
+            sendingMessage={sendingMessage}
+            uploadingFile={uploadingFile}
+            onVoiceMessage={handleVoiceMessage}
+          />
+        )}
+      </div>
     </div>
   );
 };
