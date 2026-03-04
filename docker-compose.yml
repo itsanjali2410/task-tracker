@@ -28,7 +28,7 @@ services:
       - MONGO_URL=mongodb+srv://tripstars:trip1234@cluster0.fqy0kzg.mongodb.net/
       - DB_NAME=task_tracker
       - JWT_SECRET_KEY=tripstars-secret-key-change-in-production
-      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://frontend:3000
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://frontend:3000,https://chatapp.tripstarsholidays.com,https://task-tracker-git-main-anjalis-projects-eb3c2b0a.vercel.app
       - DEBUG=False
     volumes:
       - ./backend:/app
