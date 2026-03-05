@@ -129,7 +129,7 @@ const Chat = () => {
 
       addLocalMessage(selectedConv.id, response.data);
       setNewMessage('');
-      clearReply();
+      setReplyingTo(null);
 
       setConversations(prev => prev.map(c =>
         c.id === selectedConv.id
@@ -137,7 +137,8 @@ const Chat = () => {
           : c
       ));
     } catch (error) {
-      toast.error('Failed to send message');
+      console.error('Send message error:', error.response?.data || error.message);
+      toast.error(error.response?.data?.detail || 'Failed to send message');
     } finally {
       setSendingMessage(false);
     }
