@@ -12,6 +12,9 @@ class TaskInDB(BaseModel):
     assigned_to: str  # User ID
     assigned_to_email: Optional[str] = None
     assigned_to_name: Optional[str] = None
+    owned_by: str  # User ID of task owner
+    owned_by_email: Optional[str] = None
+    owned_by_name: Optional[str] = None
     created_by: str  # User ID
     created_by_name: Optional[str] = None
     due_date: str

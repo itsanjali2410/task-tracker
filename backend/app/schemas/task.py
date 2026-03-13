@@ -10,6 +10,7 @@ class TaskBase(BaseModel):
 
 class TaskCreate(TaskBase):
     assigned_to: str
+    owned_by: Optional[str] = None  # If not provided, defaults to current user
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -18,6 +19,7 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None
     due_date: Optional[str] = None
     assigned_to: Optional[str] = None
+    owned_by: Optional[str] = None
 
 class TaskResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -29,6 +31,9 @@ class TaskResponse(BaseModel):
     assigned_to: str
     assigned_to_email: Optional[str] = None
     assigned_to_name: Optional[str] = None
+    owned_by: str
+    owned_by_email: Optional[str] = None
+    owned_by_name: Optional[str] = None
     created_by: str
     created_by_name: Optional[str] = None
     due_date: str
@@ -41,6 +46,7 @@ class BulkTaskUpdate(BaseModel):
     status: Optional[str] = None
     priority: Optional[str] = None
     assigned_to: Optional[str] = None
+    owned_by: Optional[str] = None
 
 class BulkTaskCancel(BaseModel):
     task_ids: List[str]

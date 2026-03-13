@@ -27,7 +27,7 @@ async def create_task(
     - Creates task in MongoDB
     """
     db = get_database()
-    
+
     # Validate assigned user
     assigned_user = await db.users.find_one({"id": task_data.assigned_to}, {"_id": 0})
     if not assigned_user:
@@ -35,12 +35,21 @@ async def create_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assigned user not found"
         )
-    
+
     # Non-admin roles cannot assign tasks to admins
     if current_user.role in NON_ADMIN_ROLES and assigned_user.get("role") == "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You cannot assign tasks to admins"
+        )
+
+    # Determine owner - defaults to current user if not specified
+    owner_id = task_data.owned_by if task_data.owned_by else current_user.id
+    owner_user = await db.users.find_one({"id": owner_id}, {"_id": 0})
+    if not owner_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task owner not found"
         )
     
     # Validate priority
@@ -61,6 +70,9 @@ async def create_task(
         assigned_to=task_data.assigned_to,
         assigned_to_email=assigned_user["email"],
         assigned_to_name=assigned_user["full_name"],
+        owned_by=owner_id,
+        owned_by_email=owner_user["email"],
+        owned_by_name=owner_user["full_name"],
         created_by=current_user.id,
         created_by_name=current_user.full_name,
         due_date=task_data.due_date
@@ -114,6 +126,7 @@ async def list_tasks(
     status: str = Query(None, description="Filter by status: todo, in_progress, completed, cancelled"),
     priority: str = Query(None, description="Filter by priority: low, medium, high"),
     assigned_to: str = Query(None, description="Filter by assigned user ID"),
+    owned_by: str = Query(None, description="Filter by owner user ID"),
     created_by: str = Query(None, description="Filter by creator user ID"),
     # Date filters
     due_date_from: str = Query(None, description="Due date from (YYYY-MM-DD)"),
@@ -140,6 +153,7 @@ async def list_tasks(
     - status: todo, in_progress, completed, cancelled
     - priority: low, medium, high
     - assigned_to: User ID
+    - owned_by: Task owner User ID
     - created_by: User ID
     - due_date_from/to: Date range for due date
     - created_from/to: Date range for creation date
@@ -176,7 +190,11 @@ async def list_tasks(
     # Assigned to filter
     if assigned_to:
         query["assigned_to"] = assigned_to
-    
+
+    # Owned by filter
+    if owned_by:
+        query["owned_by"] = owned_by
+
     # Created by filter
     if created_by:
         query["created_by"] = created_by
@@ -341,7 +359,18 @@ async def bulk_update_tasks(
         update_fields["assigned_to"] = bulk_data.assigned_to
         update_fields["assigned_to_email"] = assigned_user["email"]
         update_fields["assigned_to_name"] = assigned_user["full_name"]
-    
+
+    if bulk_data.owned_by:
+        owner_user = await db.users.find_one({"id": bulk_data.owned_by}, {"_id": 0})
+        if not owner_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task owner not found"
+            )
+        update_fields["owned_by"] = bulk_data.owned_by
+        update_fields["owned_by_email"] = owner_user["email"]
+        update_fields["owned_by_name"] = owner_user["full_name"]
+
     if not update_fields:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -571,13 +600,13 @@ async def update_task(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Assigned user not found"
                 )
-            
+
             old_assignee = task.get("assigned_to_name", "Unassigned")
             new_assignee = assigned_user["full_name"]
-            
+
             update_data["assigned_to_email"] = assigned_user["email"]
             update_data["assigned_to_name"] = new_assignee
-            
+
             # Log task reassignment audit
             await log_audit(
                 action_type="task_reassigned",
@@ -592,12 +621,50 @@ async def update_task(
                     "new_assignee_email": assigned_user["email"]
                 }
             )
-            
+
             # Create notification for new assignee
             await create_notification(
                 user_id=update_data["assigned_to"],
                 notification_type="task_assigned",
                 message=f"Task '{task['title']}' has been reassigned to you by {current_user.full_name}",
+                related_task_id=task_id
+            )
+
+        # If owned_by is being updated, fetch new owner details
+        if "owned_by" in update_data and update_data["owned_by"] != task.get("owned_by"):
+            owner_user = await db.users.find_one({"id": update_data["owned_by"]}, {"_id": 0})
+            if not owner_user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Task owner not found"
+                )
+
+            old_owner = task.get("owned_by_name", "Unassigned")
+            new_owner = owner_user["full_name"]
+
+            update_data["owned_by_email"] = owner_user["email"]
+            update_data["owned_by_name"] = new_owner
+
+            # Log task owner change audit
+            await log_audit(
+                action_type="task_owner_changed",
+                user_id=current_user.id,
+                user_name=current_user.full_name,
+                user_email=current_user.email,
+                task_id=task_id,
+                metadata={
+                    "task_title": task["title"],
+                    "old_owner": old_owner,
+                    "new_owner": new_owner,
+                    "new_owner_email": owner_user["email"]
+                }
+            )
+
+            # Create notification for new owner
+            await create_notification(
+                user_id=update_data["owned_by"],
+                notification_type="task_owner_assigned",
+                message=f"You are now the owner of task '{task['title']}'",
                 related_task_id=task_id
             )
     
