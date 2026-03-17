@@ -6,38 +6,41 @@ Production-ready FastAPI backend with MongoDB using best practices:
 
 ```
 backend/
-├── app/
+├── src/
 │   ├── __init__.py
-│   ├── main.py                 # FastAPI app entry point
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── deps.py            # Shared dependencies (auth, etc.)
-│   │   └── routes/
-│   │       ├── __init__.py
-│   │       ├── auth.py        # Authentication endpoints
-│   │       ├── users.py       # User management
-│   │       ├── tasks.py       # Task management
-│   │       └── comments.py    # Comments (PHASE 2)
-│   ├── core/
-│   │   ├── __init__.py
-│   │   ├── config.py          # Settings and configuration
-│   │   └── security.py        # JWT, password hashing
-│   ├── db/
-│   │   ├── __init__.py
-│   │   └── mongodb.py         # MongoDB connection
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── user.py            # User document model
-│   │   ├── task.py            # Task document model
-│   │   └── comment.py         # Comment document model
-│   └── schemas/
+│   └── app/
 │       ├── __init__.py
-│       ├── auth.py            # Auth request/response schemas
-│       ├── user.py            # User Pydantic schemas
-│       ├── task.py            # Task Pydantic schemas
-│       └── comment.py         # Comment Pydantic schemas
+│       ├── main.py                 # FastAPI app entry point
+│       ├── api/
+│       │   ├── __init__.py
+│       │   ├── deps.py            # Shared dependencies (auth, etc.)
+│       │   └── routes/
+│       │       ├── __init__.py
+│       │       ├── auth.py        # Authentication endpoints
+│       │       ├── users.py       # User management
+│       │       ├── tasks.py       # Task management
+│       │       └── comments.py    # Comments (PHASE 2)
+│       ├── core/
+│       │   ├── __init__.py
+│       │   ├── config.py          # Settings and configuration
+│       │   └── security.py        # JWT, password hashing
+│       ├── db/
+│       │   ├── __init__.py
+│       │   └── mongodb.py         # MongoDB connection
+│       ├── models/
+│       │   ├── __init__.py
+│       │   ├── user.py            # User document model
+│       │   ├── task.py            # Task document model
+│       │   └── comment.py         # Comment document model
+│       └── schemas/
+│           ├── __init__.py
+│           ├── auth.py            # Auth request/response schemas
+│           ├── user.py            # User Pydantic schemas
+│           ├── task.py            # Task Pydantic schemas
+│           └── comment.py         # Comment Pydantic schemas
 ├── requirements.txt
 ├── .env.example
+├── Dockerfile
 └── README.md
 ```
 
@@ -225,7 +228,7 @@ CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
 
 ```bash
 cd backend
-uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn src.app.main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
 API will be available at:
@@ -282,9 +285,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app ./app
+COPY . .
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8001"]
 ```
 
 ### Render.com / Railway / Heroku

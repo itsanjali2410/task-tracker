@@ -17,5 +17,5 @@ RUN mkdir -p uploads
 # Expose port
 EXPOSE 8001
 
-# Start command - CORRECT PATH: app.main:app
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+# Start command - CORRECT PATH: src.app.main:app
+CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8001"]

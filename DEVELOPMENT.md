@@ -119,7 +119,7 @@ If you need to use different ports:
 **Backend**: Edit `start-backend.sh` or `start-backend.bat`
 ```bash
 # Change --port 8001 to your desired port
-uvicorn app.main:app --host 0.0.0.0 --port 8888 --reload
+uvicorn src.app.main:app --host 0.0.0.0 --port 8888 --reload
 ```
 
 **Frontend**: Edit package.json scripts or set PORT env var
