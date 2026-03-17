@@ -35,6 +35,7 @@ const TaskList = () => {
     description: '',
     priority: 'medium',
     assigned_to: '',
+    owned_by: '',
     due_date: ''
   });
 
@@ -44,6 +45,7 @@ const TaskList = () => {
     status: '',
     priority: '',
     assigned_to: '',
+    owned_by: '',
     due_date_from: '',
     due_date_to: '',
     overdue: false,
@@ -99,11 +101,12 @@ const TaskList = () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      
+
       if (filters.search) params.append('search', filters.search);
       if (filters.status && viewMode !== 'kanban') params.append('status', filters.status);
       if (filters.priority) params.append('priority', filters.priority);
       if (filters.assigned_to) params.append('assigned_to', filters.assigned_to);
+      if (filters.owned_by) params.append('owned_by', filters.owned_by);
       if (filters.due_date_from) params.append('due_date_from', filters.due_date_from);
       if (filters.due_date_to) params.append('due_date_to', filters.due_date_to);
       if (filters.overdue && viewMode !== 'kanban') params.append('overdue', 'true');
@@ -126,7 +129,7 @@ const TaskList = () => {
       await axios.post(`${API}/tasks`, formData);
       toast.success('Task created successfully');
       setShowModal(false);
-      setFormData({ title: '', description: '', priority: 'medium', assigned_to: '', due_date: '' });
+      setFormData({ title: '', description: '', priority: 'medium', assigned_to: '', owned_by: '', due_date: '' });
       fetchTasks();
       fetchStats();
     } catch (error) {
@@ -167,12 +170,12 @@ const TaskList = () => {
 
   const openBulkModal = (action) => {
     setBulkAction(action);
-    setBulkEditData({ status: '', priority: '', assigned_to: '' });
+    setBulkEditData({ status: '', priority: '', assigned_to: '', owned_by: '' });
     setShowBulkModal(true);
   };
 
   const handleBulkEdit = async () => {
-    if (!bulkEditData.status && !bulkEditData.priority && !bulkEditData.assigned_to) {
+    if (!bulkEditData.status && !bulkEditData.priority && !bulkEditData.assigned_to && !bulkEditData.owned_by) {
       toast.error('Please select at least one field to update');
       return;
     }
@@ -182,7 +185,8 @@ const TaskList = () => {
         task_ids: Array.from(selectedTasks),
         ...(bulkEditData.status && { status: bulkEditData.status }),
         ...(bulkEditData.priority && { priority: bulkEditData.priority }),
-        ...(bulkEditData.assigned_to && { assigned_to: bulkEditData.assigned_to })
+        ...(bulkEditData.assigned_to && { assigned_to: bulkEditData.assigned_to }),
+        ...(bulkEditData.owned_by && { owned_by: bulkEditData.owned_by })
       };
       
       const response = await axios.post(`${API}/tasks/bulk/update`, payload);
@@ -233,6 +237,7 @@ const TaskList = () => {
       status: '',
       priority: '',
       assigned_to: '',
+      owned_by: '',
       due_date_from: '',
       due_date_to: '',
       overdue: false,
@@ -241,7 +246,7 @@ const TaskList = () => {
     });
   };
 
-  const hasActiveFilters = filters.status || filters.priority || filters.assigned_to || 
+  const hasActiveFilters = filters.status || filters.priority || filters.assigned_to || filters.owned_by ||
     filters.due_date_from || filters.due_date_to || filters.overdue;
 
   const getStatusBadge = (status) => {
@@ -433,6 +438,22 @@ const TaskList = () => {
                 data-testid="filter-assigned"
               >
                 <option value="">All Users</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>{user.full_name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Owned By Filter */}
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1">Owned By</label>
+              <select
+                value={filters.owned_by}
+                onChange={(e) => setFilters(prev => ({ ...prev, owned_by: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                data-testid="filter-owner"
+              >
+                <option value="">All Owners</option>
                 {users.map(user => (
                   <option key={user.id} value={user.id}>{user.full_name}</option>
                 ))}
@@ -647,7 +668,11 @@ const TaskList = () => {
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-text-secondary">
                       <User size={16} />
-                      <span className="truncate">{task.assigned_to_name}</span>
+                      <span className="truncate">Assigned: {task.assigned_to_name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-text-secondary">
+                      <User size={16} />
+                      <span className="truncate">Owned by: {task.owned_by_name || 'Unassigned'}</span>
                     </div>
                     <div className={`flex items-center gap-2 text-sm ${isOverdue(task) ? 'text-red-600 font-medium' : 'text-text-secondary'}`}>
                       <Calendar size={16} />
@@ -719,6 +744,22 @@ const TaskList = () => {
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.full_name} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">Owned By</label>
+                <select
+                  value={formData.owned_by}
+                  onChange={(e) => setFormData({ ...formData, owned_by: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="task-owner-select"
+                >
+                  <option value="">Use current user</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.full_name}
                     </option>
                   ))}
                 </select>
@@ -801,6 +842,19 @@ const TaskList = () => {
                     <select
                       value={bulkEditData.assigned_to}
                       onChange={(e) => setBulkEditData({ ...bulkEditData, assigned_to: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">Don't change</option>
+                      {users.map((user) => (
+                        <option key={user.id} value={user.id}>{user.full_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">Change Owner To</label>
+                    <select
+                      value={bulkEditData.owned_by}
+                      onChange={(e) => setBulkEditData({ ...bulkEditData, owned_by: e.target.value })}
                       className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="">Don't change</option>

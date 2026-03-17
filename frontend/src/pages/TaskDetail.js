@@ -221,12 +221,19 @@ const TaskDetail = () => {
                 <p className="text-text-primary">{task.description}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">Assigned To</label>
                   <div className="flex items-center gap-2">
                     <User size={16} className="text-text-secondary" />
                     <span className="text-text-primary">{task.assigned_to_name}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Owned By</label>
+                  <div className="flex items-center gap-2">
+                    <User size={16} className="text-text-secondary" />
+                    <span className="text-text-primary">{task.owned_by_name || 'Unassigned'}</span>
                   </div>
                 </div>
                 <div>
