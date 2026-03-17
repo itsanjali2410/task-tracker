@@ -144,7 +144,7 @@ async def list_users(
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: str,
-    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+    current_user: UserResponse = Depends(require_role(MANAGER_ROLES))
 ):
     """
     Get user by ID (Admin and Manager only)
@@ -210,11 +210,10 @@ async def update_user(
     
     # Validate role if updating
     if "role" in update_data:
-        valid_roles = ["admin", "manager", "team_member"]
-        if update_data["role"] not in valid_roles:
+        if update_data["role"] not in VALID_ROLES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}"
+                detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}"
             )
     
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()

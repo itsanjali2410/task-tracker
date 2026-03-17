@@ -71,7 +71,7 @@ async def seed_initial_data():
             {
                 "id": str(uuid.uuid4()),
                 "email": "admin@tripstars.com",
-                "full_name": "Admin User",
+                "full_name": "Admin",
                 "hashed_password": get_password_hash("Admin@123"),
                 "role": "admin",
                 "is_active": True,
@@ -80,20 +80,50 @@ async def seed_initial_data():
             },
             {
                 "id": str(uuid.uuid4()),
-                "email": "manager@tripstars.com",
-                "full_name": "Manager User",
-                "hashed_password": get_password_hash("Manager@123"),
-                "role": "manager",
+                "email": "owner@tripstars.com",
+                "full_name": "Owner",
+                "hashed_password": get_password_hash("Owner@123"),
+                "role": "owner",
                 "is_active": True,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat()
             },
             {
                 "id": str(uuid.uuid4()),
-                "email": "member@tripstars.com",
-                "full_name": "Team Member",
-                "hashed_password": get_password_hash("Member@123"),
-                "role": "team_member",
+                "email": "operation@tripstars.com",
+                "full_name": "Operation",
+                "hashed_password": get_password_hash("Operation@123"),
+                "role": "operation",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "email": "sales@tripstars.com",
+                "full_name": "Sales",
+                "hashed_password": get_password_hash("Sales@123"),
+                "role": "sales",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "email": "accounts@tripstars.com",
+                "full_name": "Accounts",
+                "hashed_password": get_password_hash("Accounts@123"),
+                "role": "accounts",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "email": "social_media@tripstars.com",
+                "full_name": "Social Media",
+                "hashed_password": get_password_hash("SocialMedia@123"),
+                "role": "social_media",
                 "is_active": True,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat()

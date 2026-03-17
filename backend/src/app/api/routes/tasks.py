@@ -313,7 +313,7 @@ async def get_task_stats(
 @router.post("/bulk/update", response_model=BulkOperationResponse)
 async def bulk_update_tasks(
     bulk_data: BulkTaskUpdate,
-    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+    current_user: UserResponse = Depends(require_role(MANAGER_ROLES))
 ):
     """
     Bulk update multiple tasks (Admin and Manager only)
@@ -410,7 +410,7 @@ async def bulk_update_tasks(
 @router.post("/bulk/cancel", response_model=BulkOperationResponse)
 async def bulk_cancel_tasks(
     bulk_data: BulkTaskCancel,
-    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+    current_user: UserResponse = Depends(require_role(MANAGER_ROLES))
 ):
     """
     Bulk cancel multiple tasks (Admin and Manager only)
@@ -465,7 +465,7 @@ async def bulk_cancel_tasks(
 @router.delete("/bulk/delete", response_model=BulkOperationResponse)
 async def bulk_delete_tasks(
     bulk_data: BulkTaskDelete,
-    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+    current_user: UserResponse = Depends(require_role(MANAGER_ROLES))
 ):
     """
     Bulk delete multiple tasks permanently (Admin and Manager only)
@@ -580,16 +580,16 @@ async def update_task(
         )
     
     # Authorization checks
-    if current_user.role == "team_member":
+    if current_user.role in NON_ADMIN_ROLES:
         if task["assigned_to"] != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this task"
             )
-        # Team members can only update status
+        # Non-admin roles can only update status
         update_data = {"status": task_update.status} if task_update.status else {}
     else:
-        # Admins and Managers can update all fields
+        # Admins and Owners can update all fields
         update_data = task_update.model_dump(exclude_unset=True)
         
         # If assigned_to is being updated, fetch new user details and log reassignment
@@ -690,7 +690,7 @@ async def update_task(
         # Create notification for status change
         if task.get("status") != update_data["status"]:
             # Notify assigned user if status changed by manager/admin
-            if current_user.role != "team_member":
+            if current_user.role in MANAGER_ROLES:
                 await create_notification(
                     user_id=task["assigned_to"],
                     notification_type="status_changed",
@@ -736,7 +736,7 @@ async def update_task(
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
     task_id: str,
-    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+    current_user: UserResponse = Depends(require_role(MANAGER_ROLES))
 ):
     """
     DEPRECATED: Tasks should not be deleted
@@ -751,7 +751,7 @@ async def delete_task(
 @router.patch("/{task_id}/cancel", response_model=TaskResponse)
 async def cancel_task(
     task_id: str,
-    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+    current_user: UserResponse = Depends(require_role(MANAGER_ROLES))
 ):
     """
     Cancel a task (Admin and Manager only)

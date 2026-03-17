@@ -3,50 +3,46 @@ Role Constants and Permission Helpers
 Centralized role management for backward-compatible role extensions
 """
 
-# All valid roles in the system
-# IMPORTANT: Do not remove existing roles, only add new ones
+# All valid roles in the system (Departments)
 VALID_ROLES = [
-    "admin",
-    "manager",
-    "team_member",  # Legacy role - kept for backward compatibility
-    "sales",
-    "operations", 
-    "marketing",
-    "accounts"
+    "admin",           # Administrator - full system access
+    "operation",       # Operations - manage operations
+    "owner",           # Owner - business owner
+    "sales",           # Sales - sales team
+    "accounts",        # Accounts - accounting/finance
+    "social_media"     # Social Media - social media management
 ]
 
 # Role groups for permission checks
 ADMIN_ROLES = ["admin"]
-MANAGER_ROLES = ["admin", "manager"]
+MANAGER_ROLES = ["admin", "owner"]  # Admin and Owner have manager-level access
 
 # Staff roles - can create tasks, comments, attachments, participate in chats
 STAFF_ROLES = [
-    "admin", 
-    "manager", 
-    "team_member",
+    "admin",
+    "owner",
+    "operation",
     "sales",
-    "operations",
-    "marketing",
-    "accounts"
+    "accounts",
+    "social_media"
 ]
 
 # Roles that can view all tasks (not just their own)
 ALL_TASKS_VIEW_ROLES = [
     "admin",
-    "manager",
+    "owner",
+    "operation",
     "sales",
-    "operations",
-    "marketing", 
-    "accounts"
+    "accounts",
+    "social_media"
 ]
 
 # Roles that cannot assign tasks to admins
 NON_ADMIN_ROLES = [
-    "team_member",
+    "operation",
     "sales",
-    "operations",
-    "marketing",
-    "accounts"
+    "accounts",
+    "social_media"
 ]
 
 # Roles that can access reports
