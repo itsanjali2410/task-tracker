@@ -56,7 +56,7 @@ function AppRoutes() {
       <Route
         path="/users"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'owner']}>
             <UserManagement />
           </ProtectedRoute>
         }
@@ -64,7 +64,7 @@ function AppRoutes() {
       <Route
         path="/tasks"
         element={
-          <ProtectedRoute allowedRoles={ALL_STAFF_ROLES}>
+          <ProtectedRoute>
             <TaskList />
           </ProtectedRoute>
         }
@@ -80,7 +80,7 @@ function AppRoutes() {
       <Route
         path="/my-tasks"
         element={
-          <ProtectedRoute allowedRoles={['team_member']}>
+          <ProtectedRoute>
             <MyTasks />
           </ProtectedRoute>
         }
@@ -88,7 +88,7 @@ function AppRoutes() {
       <Route
         path="/reports"
         element={
-          <ProtectedRoute allowedRoles={MANAGER_ROLES}>
+          <ProtectedRoute allowedRoles={['admin', 'owner']}>
             <Reports />
           </ProtectedRoute>
         }
@@ -96,7 +96,7 @@ function AppRoutes() {
       <Route
         path="/audit-logs"
         element={
-          <ProtectedRoute allowedRoles={MANAGER_ROLES}>
+          <ProtectedRoute allowedRoles={['admin', 'owner']}>
             <AuditLogs />
           </ProtectedRoute>
         }
@@ -104,7 +104,7 @@ function AppRoutes() {
       <Route
         path="/chat"
         element={
-          <ProtectedRoute allowedRoles={ALL_STAFF_ROLES}>
+          <ProtectedRoute>
             <Chat />
           </ProtectedRoute>
         }

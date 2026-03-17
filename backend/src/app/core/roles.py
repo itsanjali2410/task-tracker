@@ -52,7 +52,7 @@ REPORTS_ACCESS_ROLES = ["admin", "manager"]
 AUDIT_ACCESS_ROLES = ["admin", "manager"]
 
 # Roles that can manage users (CRUD)
-USER_MANAGEMENT_ROLES = ["admin"]
+USER_MANAGEMENT_ROLES = ["admin", "owner"]
 
 
 def is_valid_role(role: str) -> bool:

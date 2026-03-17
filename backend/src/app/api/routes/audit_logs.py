@@ -4,6 +4,7 @@ from app.schemas.notification import AuditLogResponse
 from app.schemas.user import UserResponse
 from app.api.deps import get_current_user, require_role
 from app.services.audit_service import get_audit_logs
+from app.core.roles import MANAGER_ROLES
 
 router = APIRouter(prefix="/audit-logs", tags=["Audit Logs"])
 
@@ -13,7 +14,7 @@ async def list_audit_logs(
     action_type: Optional[str] = Query(None, description="Filter by action type"),
     user_id: Optional[str] = Query(None, description="Filter by user"),
     task_id: Optional[str] = Query(None, description="Filter by task"),
-    current_user: UserResponse = Depends(require_role(["admin", "manager"]))
+    current_user: UserResponse = Depends(require_role(MANAGER_ROLES))
 ):
     """
     Get audit logs (Admin and Manager only)

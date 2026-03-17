@@ -21,13 +21,13 @@ const Layout = ({ children }) => {
 
   // Navigation items with role-based access
   const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ALL_STAFF_ROLES },
-    { path: '/tasks', icon: CheckSquare, label: 'All Tasks', roles: ALL_STAFF_ROLES },
-    { path: '/my-tasks', icon: CheckSquare, label: 'My Tasks', roles: ['team_member'] },
-    { path: '/chat', icon: MessageCircle, label: 'Messages', roles: ALL_STAFF_ROLES },
-    { path: '/users', icon: Users, label: 'User Management', roles: ['admin'] },
-    { path: '/reports', icon: TrendingUp, label: 'Reports', roles: MANAGER_ROLES },
-    { path: '/audit-logs', icon: Shield, label: 'Audit Logs', roles: MANAGER_ROLES },
+    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'owner', 'operation', 'sales', 'accounts', 'social_media'] },
+    { path: '/tasks', icon: CheckSquare, label: 'All Tasks', roles: ['admin', 'owner', 'operation', 'sales', 'accounts', 'social_media'] },
+    { path: '/my-tasks', icon: CheckSquare, label: 'My Tasks', roles: ['admin', 'owner', 'operation', 'sales', 'accounts', 'social_media'] },
+    { path: '/chat', icon: MessageCircle, label: 'Messages', roles: ['admin', 'owner', 'operation', 'sales', 'accounts', 'social_media'] },
+    { path: '/users', icon: Users, label: 'User Management', roles: ['admin', 'owner'] },
+    { path: '/reports', icon: TrendingUp, label: 'Reports', roles: ['admin', 'owner'] },
+    { path: '/audit-logs', icon: Shield, label: 'Audit Logs', roles: ['admin', 'owner'] },
   ];
 
   const filteredNavItems = navItems.filter(item => item.roles.includes(user?.role));

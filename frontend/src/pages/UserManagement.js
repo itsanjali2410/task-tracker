@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, User, Edit2, Key, UserX, UserCheck, Trash2 } from 'lucide-react';
+import { Plus, User, Edit2, Key, UserX, UserCheck, Trash2, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -13,12 +13,13 @@ const UserManagement = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   
   const [formData, setFormData] = useState({
     email: '',
     full_name: '',
     password: '',
-    role: 'team_member'
+    role: 'operation'
   });
 
   const [editData, setEditData] = useState({
@@ -52,7 +53,8 @@ const UserManagement = () => {
       await axios.post(`${API}/users`, formData);
       toast.success('User created successfully');
       setShowModal(false);
-      setFormData({ email: '', full_name: '', password: '', role: 'team_member' });
+      setFormData({ email: '', full_name: '', password: '', role: 'operation' });
+      setShowPassword(false);
       fetchUsers();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to create user');
@@ -123,15 +125,14 @@ const UserManagement = () => {
     setShowPasswordModal(true);
   };
 
-  // All available roles
+  // All available roles - must match backend VALID_ROLES
   const availableRoles = [
     { value: 'admin', label: 'Admin', color: 'bg-purple-100 text-purple-700 border-purple-200' },
-    { value: 'manager', label: 'Manager', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-    { value: 'team_member', label: 'Team Member', color: 'bg-green-100 text-green-700 border-green-200' },
+    { value: 'owner', label: 'Owner', color: 'bg-pink-100 text-pink-700 border-pink-200' },
+    { value: 'operation', label: 'Operation', color: 'bg-teal-100 text-teal-700 border-teal-200' },
     { value: 'sales', label: 'Sales', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-    { value: 'operations', label: 'Operations', color: 'bg-teal-100 text-teal-700 border-teal-200' },
-    { value: 'marketing', label: 'Marketing', color: 'bg-pink-100 text-pink-700 border-pink-200' },
-    { value: 'accounts', label: 'Accounts', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' }
+    { value: 'accounts', label: 'Accounts', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+    { value: 'social_media', label: 'Social Media', color: 'bg-blue-100 text-blue-700 border-blue-200' }
   ];
 
   const getRoleBadge = (role) => {
@@ -282,14 +283,24 @@ const UserManagement = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-2">Password</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  required
-                  data-testid="password-input"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary pr-12"
+                    required
+                    data-testid="password-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
+                    data-testid="password-toggle"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-2">Role</label>
