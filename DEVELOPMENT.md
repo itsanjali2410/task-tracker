@@ -62,7 +62,7 @@ export CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 export DEBUG=False
 
 # Start the server
-uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn src.app.main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
 Backend will be available at: **http://localhost:8001**

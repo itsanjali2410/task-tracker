@@ -11,6 +11,6 @@ echo.
 echo Starting FastAPI backend on http://localhost:8001
 echo API docs available at http://localhost:8001/docs
 echo.
-uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn src.app.main:app --host 0.0.0.0 --port 8001 --reload
 
 pause
