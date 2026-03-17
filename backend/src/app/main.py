@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+
+# Add parent directory to path so 'app' is importable
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
