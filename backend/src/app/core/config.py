@@ -1,14 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
-import os
 from pathlib import Path
-from dotenv import load_dotenv
-
-# Load .env file from backend directory
-backend_dir = Path(__file__).parent.parent.parent
-env_file = backend_dir / ".env"
-if env_file.exists():
-    load_dotenv(env_file)
 
 class Settings(BaseSettings):
     # Application
@@ -17,33 +9,41 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # MongoDB
-    MONGODB_URI: str = os.getenv("MONGO_URL", "")
-    DB_NAME: str = os.getenv("DB_NAME", "")
+    MONGO_URL: str = ""  # Will be loaded from .env as MONGO_URL
+    DB_NAME: str = ""
 
     # Security - JWT
-    SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "tripstars-secret-key-change-in-production")
+    JWT_SECRET_KEY: str = "tripstars-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Short-lived access token
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived refresh token
 
     # CORS (comma-separated string)
     CORS_ORIGINS: str = "http://localhost:3000"
-    
+
     # Email Configuration (Phase 4)
-    EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "false").lower() == "true"
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_USER: str = os.getenv("SMTP_USER", "")
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", ""))
-    
+    EMAIL_ENABLED: bool = False
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
+
     # File Upload
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "/app/uploads")
+    UPLOAD_DIR: str = "./uploads"
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
-    
+
+    @property
+    def MONGODB_URI(self) -> str:
+        """Alias for MONGO_URL for backward compatibility"""
+        return self.MONGO_URL
+
     class Config:
         case_sensitive = True
-        env_file = ".env"
+        # Get .env file from backend directory (go up 4 levels from config.py)
+        # config.py is at: backend/src/app/core/config.py
+        # .env is at: backend/.env
+        env_file = str(Path(__file__).parent.parent.parent.parent / ".env")
         extra = "ignore"  # Allow extra fields from environment
 
 settings = Settings()
