@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, User, MessageSquare, Send, Paperclip, Upload, Download, Trash2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Calendar, User, MessageSquare, Send, Paperclip, Upload, Download, Trash2, RefreshCw, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -21,6 +21,7 @@ const TaskDetail = () => {
   const [activeTab, setActiveTab] = useState('comments'); // 'comments' or 'attachments'
   const [uploadingFile, setUploadingFile] = useState(false);
   const [showReassignPrompt, setShowReassignPrompt] = useState(false);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
 
   useEffect(() => {
     fetchTaskData();
@@ -301,118 +302,60 @@ const TaskDetail = () => {
             </div>
           </div>
 
-          {/* Tabs for Comments and Attachments */}
+          {/* Comments Button and Attachments */}
+          <div className="flex gap-4">
+            <button
+              onClick={() => setShowCommentsModal(true)}
+              className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg shadow-sm p-4 font-medium flex items-center justify-center gap-2 transition-colors"
+              data-testid="comments-btn"
+            >
+              <MessageSquare size={20} />
+              Comments ({comments.length})
+            </button>
+          </div>
+
+          {/* Attachments Section */}
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm">
-            {/* Tab Headers */}
-            <div className="flex border-b border-slate-200">
-              <button
-                onClick={() => setActiveTab('comments')}
-                className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                  activeTab === 'comments'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-text-secondary hover:text-text-primary'
-                }`}
-                data-testid="comments-tab"
-              >
-                <MessageSquare size={20} />
-                Comments ({comments.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('attachments')}
-                className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                  activeTab === 'attachments'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-text-secondary hover:text-text-primary'
-                }`}
-                data-testid="attachments-tab"
-              >
+            {/* Attachment Header */}
+            <div className="border-b border-slate-200 px-6 py-4">
+              <h4 className="font-medium text-text-primary flex items-center gap-2">
                 <Paperclip size={20} />
                 Attachments ({attachments.length})
-              </button>
+              </h4>
             </div>
 
-            {/* Tab Content */}
+            {/* Attachment Content */}
             <div className="p-6">
-              {activeTab === 'comments' ? (
-                <>
-                  {/* Comment Form */}
-                  <form onSubmit={handleAddComment} className="mb-6">
-                    <div className="flex gap-3">
-                      <input
-                        type="text"
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Add a comment..."
-                        className="flex-1 px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                        disabled={submittingComment}
-                        data-testid="comment-input"
-                      />
-                      <button
-                        type="submit"
-                        disabled={submittingComment || !newComment.trim()}
-                        className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-md font-medium flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                        data-testid="submit-comment-btn"
-                      >
-                        <Send size={16} />
-                        Post
-                      </button>
-                    </div>
-                  </form>
+              <>
+                {/* File Upload */}
+                <div className="mb-6">
+                  <label
+                    htmlFor="file-upload"
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-md font-medium cursor-pointer transition-all active:scale-95"
+                  >
+                    <Upload size={20} />
+                    {uploadingFile ? 'Uploading...' : 'Upload File'}
+                  </label>
+                  <input
+                    id="file-upload"
+                    type="file"
+                    onChange={handleFileUpload}
+                    disabled={uploadingFile}
+                    className="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    data-testid="file-upload-input"
+                  />
+                  <p className="text-xs text-text-secondary mt-2">
+                    Supported: PDF, JPG, PNG, DOC, DOCX (Max 10MB)
+                  </p>
+                </div>
 
-                  {/* Comments List */}
-                  <div className="space-y-4">
-                    {comments.length === 0 ? (
-                      <p className="text-center text-text-secondary py-8">No comments yet. Be the first to comment!</p>
-                    ) : (
-                      comments.map((comment) => (
-                        <div
-                          key={comment.id}
-                          className="border-l-2 border-primary pl-4 py-2"
-                          data-testid={`comment-${comment.id}`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-text-primary">{comment.user_name}</span>
-                            <span className="text-xs text-text-secondary">
-                              {new Date(comment.created_at).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="text-text-primary whitespace-pre-wrap break-words">{comment.content}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  {/* File Upload */}
-                  <div className="mb-6">
-                    <label
-                      htmlFor="file-upload"
-                      className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-md font-medium cursor-pointer transition-all active:scale-95"
-                    >
-                      <Upload size={20} />
-                      {uploadingFile ? 'Uploading...' : 'Upload File'}
-                    </label>
-                    <input
-                      id="file-upload"
-                      type="file"
-                      onChange={handleFileUpload}
-                      disabled={uploadingFile}
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      data-testid="file-upload-input"
-                    />
-                    <p className="text-xs text-text-secondary mt-2">
-                      Allowed: PDF, JPG, PNG, DOC, DOCX (Max 10MB)
-                    </p>
-                  </div>
-
-                  {/* Attachments List */}
-                  <div className="space-y-3">
-                    {attachments.length === 0 ? (
-                      <p className="text-center text-text-secondary py-8">No attachments yet</p>
-                    ) : (
-                      attachments.map((attachment) => (
+                {/* Files List */}
+                <div className="space-y-3">
+                  {attachments.length === 0 ? (
+                    <p className="text-center text-text-secondary py-8">No attachments yet</p>
+                  ) : (
+                    attachments.map((attachment) => (
                         <div
                           key={attachment.id}
                           className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-primary/30 transition-colors"
@@ -454,9 +397,8 @@ const TaskDetail = () => {
                         </div>
                       ))
                     )}
-                  </div>
-                </>
-              )}
+                </div>
+              </>
             </div>
           </div>
         </div>
@@ -482,6 +424,82 @@ const TaskDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Comments Modal */}
+      {showCommentsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-xl font-heading font-semibold text-text-primary flex items-center gap-2">
+                <MessageSquare size={24} />
+                Comments ({comments.length})
+              </h3>
+              <button
+                onClick={() => setShowCommentsModal(false)}
+                className="text-text-secondary hover:text-text-primary transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Comments List */}
+              <div className="p-6 space-y-4">
+                {comments.length === 0 ? (
+                  <p className="text-center text-text-secondary py-8">No comments yet. Be the first to comment!</p>
+                ) : (
+                  comments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      className="border border-slate-200 rounded-lg p-4 hover:border-primary/30 transition-colors"
+                      data-testid={`comment-${comment.id}`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                          {comment.user_name.charAt(0)}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-text-primary">{comment.user_name}</p>
+                          <span className="text-xs text-text-secondary">
+                            {new Date(comment.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-text-primary whitespace-pre-wrap break-words ml-10 bg-slate-50 p-3 rounded">{comment.content}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer - Comment Form */}
+            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50">
+              <form onSubmit={handleAddComment} className="flex gap-3">
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Add a comment..."
+                  className="flex-1 px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={submittingComment}
+                  data-testid="comment-input"
+                />
+                <button
+                  type="submit"
+                  disabled={submittingComment || !newComment.trim()}
+                  className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-md font-medium flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  data-testid="submit-comment-btn"
+                >
+                  <Send size={16} />
+                  Post
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reassign Prompt Modal */}
       {showReassignPrompt && (
