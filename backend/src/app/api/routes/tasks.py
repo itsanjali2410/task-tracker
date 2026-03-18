@@ -66,7 +66,7 @@ async def create_task(
         title=task_data.title,
         description=task_data.description,
         priority=task_data.priority,
-        status="todo",
+        status="open",
         assigned_to=task_data.assigned_to,
         assigned_to_email=assigned_user["email"],
         assigned_to_name=assigned_user["full_name"],
@@ -123,7 +123,7 @@ async def list_tasks(
     # Search parameters
     search: str = Query(None, description="Search in title and description"),
     # Filter parameters
-    status: str = Query(None, description="Filter by status: todo, in_progress, completed, cancelled"),
+    status: str = Query(None, description="Filter by status: open, closed, completed"),
     priority: str = Query(None, description="Filter by priority: low, medium, high"),
     assigned_to: str = Query(None, description="Filter by assigned user ID"),
     owned_by: str = Query(None, description="Filter by owner user ID"),
@@ -150,7 +150,7 @@ async def list_tasks(
     
     Filters:
     - search: Search in title and description (case-insensitive)
-    - status: todo, in_progress, completed, cancelled
+    - status: open, closed, completed
     - priority: low, medium, high
     - assigned_to: User ID
     - owned_by: Task owner User ID
@@ -177,7 +177,7 @@ async def list_tasks(
     
     # Status filter
     if status:
-        valid_statuses = ["todo", "in_progress", "completed", "cancelled"]
+        valid_statuses = ["open", "closed", "completed"]
         if status in valid_statuses:
             query["status"] = status
     
@@ -220,7 +220,7 @@ async def list_tasks(
     if overdue:
         current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         query["due_date"] = {"$lt": current_date}
-        query["status"] = {"$nin": ["completed", "cancelled"]}
+        query["status"] = {"$nin": ["completed"]}
     
     # Sorting
     sort_direction = -1 if sort_order == "desc" else 1
@@ -299,7 +299,7 @@ async def get_task_stats(
         
         # Overdue check
         due_date = task.get("due_date", "")
-        is_overdue = due_date < current_date and status not in ["completed", "cancelled"]
+        is_overdue = due_date < current_date and status not in ["completed"]
         if is_overdue:
             stats["overdue"] += 1
         
@@ -332,7 +332,7 @@ async def bulk_update_tasks(
     update_fields = {}
     
     if bulk_data.status:
-        valid_statuses = ["todo", "in_progress", "completed", "cancelled"]
+        valid_statuses = ["open", "closed", "completed"]
         if bulk_data.status not in valid_statuses:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -431,11 +431,11 @@ async def bulk_cancel_tasks(
         {"_id": 0, "id": 1, "title": 1}
     ).to_list(len(bulk_data.task_ids))
     
-    # Perform bulk cancel
+    # Perform bulk cancel (set status to closed)
     result = await db.tasks.update_many(
         {"id": {"$in": bulk_data.task_ids}},
         {"$set": {
-            "status": "cancelled",
+            "status": "closed",
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
@@ -592,18 +592,21 @@ async def update_task(
         # Admins and Owners can update all fields
         update_data = task_update.model_dump(exclude_unset=True)
         
-        # If assigned_to is being updated, fetch new user details and log reassignment
+        # If assigned_to is being updated, reassign back to creator
         if "assigned_to" in update_data and update_data["assigned_to"] != task.get("assigned_to"):
-            assigned_user = await db.users.find_one({"id": update_data["assigned_to"]}, {"_id": 0})
+            # Automatically reassign to creator
+            creator_id = task.get("created_by")
+            assigned_user = await db.users.find_one({"id": creator_id}, {"_id": 0})
             if not assigned_user:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Assigned user not found"
+                    detail="Task creator not found"
                 )
 
             old_assignee = task.get("assigned_to_name", "Unassigned")
             new_assignee = assigned_user["full_name"]
 
+            update_data["assigned_to"] = creator_id
             update_data["assigned_to_email"] = assigned_user["email"]
             update_data["assigned_to_name"] = new_assignee
 
@@ -676,7 +679,7 @@ async def update_task(
     
     # Validate status if provided
     if "status" in update_data:
-        valid_statuses = ["todo", "in_progress", "completed", "cancelled"]
+        valid_statuses = ["open", "closed", "completed"]
         if update_data["status"] not in valid_statuses:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -740,12 +743,12 @@ async def delete_task(
 ):
     """
     DEPRECATED: Tasks should not be deleted
-    Use PATCH to update status to 'cancelled' instead
+    Use PATCH to update status to 'closed' instead
     This endpoint is disabled for data integrity
     """
     raise HTTPException(
         status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-        detail="Task deletion is not allowed. Use status update to 'cancelled' instead."
+        detail="Task deletion is not allowed. Use status update to 'closed' instead."
     )
 
 @router.patch("/{task_id}/cancel", response_model=TaskResponse)
@@ -754,32 +757,32 @@ async def cancel_task(
     current_user: UserResponse = Depends(require_role(MANAGER_ROLES))
 ):
     """
-    Cancel a task (Admin and Manager only)
-    - Sets status to 'cancelled'
+    Close a task (Admin and Manager only)
+    - Sets status to 'closed'
     - Task remains in database but excluded from active workflows
     """
     db = get_database()
     task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
-    
+
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
-    
+
     old_status = task.get("status")
-    
+
     await db.tasks.update_one(
         {"id": task_id},
         {"$set": {
-            "status": "cancelled",
+            "status": "closed",
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
-    
+
     # Log audit
     await log_audit(
-        action_type="task_cancelled",
+        action_type="task_closed",
         user_id=current_user.id,
         user_name=current_user.full_name,
         user_email=current_user.email,
@@ -787,7 +790,7 @@ async def cancel_task(
         metadata={
             "task_title": task["title"],
             "old_status": old_status,
-            "new_status": "cancelled"
+            "new_status": "closed"
         }
     )
     

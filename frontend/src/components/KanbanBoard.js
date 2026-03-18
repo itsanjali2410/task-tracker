@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { Calendar, User, AlertTriangle, GripVertical } from 'lucide-react';
 
 const COLUMNS = [
-  { id: 'todo', title: 'To Do', color: 'bg-slate-100 border-slate-300' },
-  { id: 'in_progress', title: 'In Progress', color: 'bg-blue-50 border-blue-300' },
-  { id: 'completed', title: 'Completed', color: 'bg-green-50 border-green-300' },
-  { id: 'cancelled', title: 'Cancelled', color: 'bg-red-50 border-red-300' }
+  { id: 'open', title: 'Open', color: 'bg-slate-100 border-slate-300' },
+  { id: 'closed', title: 'Closed', color: 'bg-red-50 border-red-300' },
+  { id: 'completed', title: 'Completed', color: 'bg-green-50 border-green-300' }
 ];
 
 const KanbanBoard = ({ tasks, onStatusChange, onTaskClick }) => {
@@ -56,7 +55,7 @@ const KanbanBoard = ({ tasks, onStatusChange, onTaskClick }) => {
   };
 
   const isOverdue = (task) => {
-    if (task.status === 'completed' || task.status === 'cancelled') return false;
+    if (task.status === 'completed') return false;
     return new Date(task.due_date) < new Date();
   };
 

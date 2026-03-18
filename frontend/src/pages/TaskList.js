@@ -251,12 +251,11 @@ const TaskList = () => {
 
   const getStatusBadge = (status) => {
     const styles = {
-      todo: 'bg-slate-100 text-slate-800 border-slate-200',
-      in_progress: 'bg-blue-50 text-blue-700 border-blue-200',
-      completed: 'bg-green-50 text-green-700 border-green-200',
-      cancelled: 'bg-red-50 text-red-700 border-red-200'
+      open: 'bg-slate-100 text-slate-800 border-slate-200',
+      closed: 'bg-red-50 text-red-700 border-red-200',
+      completed: 'bg-green-50 text-green-700 border-green-200'
     };
-    return styles[status] || styles.todo;
+    return styles[status] || styles.open;
   };
 
   const getPriorityBadge = (priority) => {
@@ -269,7 +268,7 @@ const TaskList = () => {
   };
 
   const isOverdue = (task) => {
-    if (task.status === 'completed' || task.status === 'cancelled') return false;
+    if (task.status === 'completed') return false;
     return new Date(task.due_date) < new Date();
   };
 
@@ -325,12 +324,12 @@ const TaskList = () => {
             <p className="text-2xl font-bold text-text-primary">{stats.total}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-lg p-4">
-            <p className="text-sm text-text-secondary">To Do</p>
-            <p className="text-2xl font-bold text-slate-600">{stats.by_status.todo}</p>
+            <p className="text-sm text-text-secondary">Open</p>
+            <p className="text-2xl font-bold text-slate-600">{stats.by_status.open || 0}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-lg p-4">
-            <p className="text-sm text-text-secondary">In Progress</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.by_status.in_progress}</p>
+            <p className="text-sm text-text-secondary">Closed</p>
+            <p className="text-2xl font-bold text-red-600">{stats.by_status.closed || 0}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-lg p-4">
             <p className="text-sm text-text-secondary">Completed</p>
@@ -404,10 +403,9 @@ const TaskList = () => {
                   data-testid="filter-status"
                 >
                   <option value="">All Statuses</option>
-                  <option value="todo">To Do</option>
-                  <option value="in_progress">In Progress</option>
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
                   <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
                 </select>
               </div>
             )}
@@ -818,10 +816,9 @@ const TaskList = () => {
                       className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="">Don't change</option>
-                      <option value="todo">To Do</option>
-                      <option value="in_progress">In Progress</option>
+                      <option value="open">Open</option>
+                      <option value="closed">Closed</option>
                       <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
                   <div>
