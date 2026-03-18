@@ -20,6 +20,7 @@ const TaskDetail = () => {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [activeTab, setActiveTab] = useState('comments'); // 'comments' or 'attachments'
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [showReassignPrompt, setShowReassignPrompt] = useState(false);
 
   useEffect(() => {
     fetchTaskData();
@@ -48,17 +49,20 @@ const TaskDetail = () => {
       await axios.patch(`${API}/tasks/${taskId}`, { status: newStatus });
       toast.success('Task status updated');
       setTask({ ...task, status: newStatus });
+      // Show reassign prompt after status update if user can reassign
+      if ((user?.role === 'admin' || user?.role === 'owner') && task?.created_by !== task?.assigned_to) {
+        setShowReassignPrompt(true);
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to update task');
     }
   };
 
   const handleReassign = async () => {
-    if (!window.confirm(`Reassign this task back to ${task.created_by_name}?`)) return;
-
     try {
       await axios.patch(`${API}/tasks/${taskId}`, { assigned_to: task.created_by });
       toast.success(`Task reassigned to ${task.created_by_name}`);
+      setShowReassignPrompt(false);
       fetchTaskData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to reassign task');
@@ -372,7 +376,7 @@ const TaskDetail = () => {
                               {new Date(comment.created_at).toLocaleString()}
                             </span>
                           </div>
-                          <p className="text-text-primary">{comment.content}</p>
+                          <div className="text-text-primary whitespace-pre-wrap break-words">{comment.content}</div>
                         </div>
                       ))
                     )}
@@ -478,6 +482,35 @@ const TaskDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Reassign Prompt Modal */}
+      {showReassignPrompt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-xl font-heading font-semibold text-text-primary mb-4">Reassign Task?</h3>
+            <p className="text-text-secondary mb-6">
+              Would you like to reassign this task back to {task?.created_by_name}?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowReassignPrompt(false)}
+                className="flex-1 px-4 py-2 border border-slate-200 text-text-primary rounded-md hover:bg-slate-50 transition-colors font-medium"
+                data-testid="cancel-reassign-btn"
+              >
+                No, Keep It
+              </button>
+              <button
+                onClick={handleReassign}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors font-medium flex items-center justify-center gap-2"
+                data-testid="confirm-reassign-btn"
+              >
+                <RefreshCw size={16} />
+                Yes, Reassign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
