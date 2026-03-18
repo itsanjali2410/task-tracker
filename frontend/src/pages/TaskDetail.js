@@ -218,7 +218,7 @@ const TaskDetail = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">Description</label>
-                <p className="text-text-primary">{task.description}</p>
+                <div className="text-text-primary whitespace-pre-wrap break-words bg-slate-50 p-3 rounded border border-slate-200">{task.description}</div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">

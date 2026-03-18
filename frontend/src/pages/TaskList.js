@@ -662,7 +662,7 @@ const TaskList = () => {
                       </span>
                     )}
                   </div>
-                  <p className="text-text-secondary text-sm mb-4 line-clamp-2">{task.description}</p>
+                  <p className="text-text-secondary text-sm mb-4 line-clamp-2 whitespace-pre-wrap">{task.description}</p>
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-text-secondary">
                       <User size={16} />
