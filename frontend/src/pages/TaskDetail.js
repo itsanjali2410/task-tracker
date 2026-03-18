@@ -22,6 +22,8 @@ const TaskDetail = () => {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [showReassignPrompt, setShowReassignPrompt] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [quotedText, setQuotedText] = useState('');
 
   useEffect(() => {
     fetchTaskData();
@@ -76,12 +78,19 @@ const TaskDetail = () => {
 
     setSubmittingComment(true);
     try {
+      let content = newComment;
+      if (replyingTo) {
+        content = `> **Re: ${replyingTo.user_name}**\n> ${replyingTo.content}\n\n${newComment}`;
+      }
+
       const response = await axios.post(`${API}/comments`, {
         task_id: taskId,
-        content: newComment
+        content: content
       });
       setComments([...comments, response.data]);
       setNewComment('');
+      setReplyingTo(null);
+      setQuotedText('');
       toast.success('Comment added');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to add comment');
@@ -425,76 +434,145 @@ const TaskDetail = () => {
         </div>
       </div>
 
-      {/* Comments Modal */}
+      {/* Comments Modal - Email Style */}
       {showCommentsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl h-[90vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl h-[90vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-              <h3 className="text-xl font-heading font-semibold text-text-primary flex items-center gap-2">
-                <MessageSquare size={24} />
-                Comments ({comments.length})
-              </h3>
+            <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">
+              <div>
+                <h3 className="text-xl font-heading font-semibold text-text-primary flex items-center gap-2">
+                  <MessageSquare size={24} />
+                  Comments Thread ({comments.length})
+                </h3>
+                <p className="text-sm text-text-secondary mt-1">{task?.title}</p>
+              </div>
               <button
-                onClick={() => setShowCommentsModal(false)}
+                onClick={() => {
+                  setShowCommentsModal(false);
+                  setReplyingTo(null);
+                  setNewComment('');
+                }}
                 className="text-text-secondary hover:text-text-primary transition-colors"
               >
                 <X size={24} />
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto">
-              {/* Comments List */}
+            {/* Comments Thread */}
+            <div className="flex-1 overflow-y-auto bg-slate-50">
               <div className="p-6 space-y-4">
                 {comments.length === 0 ? (
-                  <p className="text-center text-text-secondary py-8">No comments yet. Be the first to comment!</p>
+                  <p className="text-center text-text-secondary py-12">No comments yet. Start the conversation!</p>
                 ) : (
-                  comments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      className="border border-slate-200 rounded-lg p-4 hover:border-primary/30 transition-colors"
-                      data-testid={`comment-${comment.id}`}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                          {comment.user_name.charAt(0)}
+                  comments.map((comment) => {
+                    const hasQuote = comment.content.includes('> **Re:');
+                    return (
+                      <div
+                        key={comment.id}
+                        className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all"
+                        data-testid={`comment-${comment.id}`}
+                      >
+                        {/* Comment Header */}
+                        <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                            {comment.user_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-text-primary">{comment.user_name}</p>
+                            <p className="text-xs text-text-secondary">
+                              {new Date(comment.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setReplyingTo(comment);
+                              setNewComment('');
+                            }}
+                            className="px-3 py-1 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 rounded border border-blue-200 transition-colors"
+                          >
+                            Reply
+                          </button>
                         </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-text-primary">{comment.user_name}</p>
-                          <span className="text-xs text-text-secondary">
-                            {new Date(comment.created_at).toLocaleString()}
-                          </span>
+
+                        {/* Comment Body */}
+                        <div className="px-4 py-4">
+                          {hasQuote ? (
+                            <div className="space-y-3">
+                              {/* Quoted Section */}
+                              <div className="bg-slate-100 border-l-4 border-slate-400 pl-3 py-2 text-sm text-text-secondary whitespace-pre-wrap break-words font-mono">
+                                {comment.content
+                                  .split('\n\n')[0]
+                                  .split('\n')
+                                  .map((line, idx) => (
+                                    <div key={idx} className="text-slate-600">
+                                      {line}
+                                    </div>
+                                  ))}
+                              </div>
+                              {/* Reply Text */}
+                              <div className="text-text-primary whitespace-pre-wrap break-words">
+                                {comment.content.split('\n\n').slice(1).join('\n\n')}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-text-primary whitespace-pre-wrap break-words leading-relaxed">
+                              {comment.content}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-text-primary whitespace-pre-wrap break-words ml-10 bg-slate-50 p-3 rounded">{comment.content}</div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
 
-            {/* Modal Footer - Comment Form */}
-            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50">
-              <form onSubmit={handleAddComment} className="flex gap-3">
-                <input
-                  type="text"
+            {/* Reply Composition Area */}
+            <div className="border-t border-slate-200 bg-white px-6 py-4 space-y-3">
+              {replyingTo && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-blue-900">Replying to {replyingTo.user_name}</p>
+                    <p className="text-xs text-blue-700 mt-1 line-clamp-2">
+                      {replyingTo.content.includes('> **Re:')
+                        ? replyingTo.content.split('\n\n').slice(1).join('\n\n').substring(0, 100)
+                        : replyingTo.content.substring(0, 100)}
+                      {replyingTo.content.length > 100 ? '...' : ''}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setReplyingTo(null);
+                      setNewComment('');
+                    }}
+                    className="text-blue-600 hover:text-blue-800 font-semibold"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              <form onSubmit={handleAddComment} className="flex gap-2">
+                <textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="flex-1 px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder={replyingTo ? `Reply to ${replyingTo.user_name}...` : 'Add a comment...'}
+                  rows={3}
+                  className="flex-1 px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   disabled={submittingComment}
                   data-testid="comment-input"
                 />
-                <button
-                  type="submit"
-                  disabled={submittingComment || !newComment.trim()}
-                  className="px-6 py-2 bg-primary hover:bg-primary-hover text-white rounded-md font-medium flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  data-testid="submit-comment-btn"
-                >
-                  <Send size={16} />
-                  Post
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="submit"
+                    disabled={submittingComment || !newComment.trim()}
+                    className="px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    data-testid="submit-comment-btn"
+                  >
+                    <Send size={18} />
+                    {replyingTo ? 'Send Reply' : 'Post'}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
