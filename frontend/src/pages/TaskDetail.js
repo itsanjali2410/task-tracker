@@ -24,10 +24,21 @@ const TaskDetail = () => {
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [quotedText, setQuotedText] = useState('');
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
+    fetchUsers();
     fetchTaskData();
   }, [taskId]);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get(`${API}/users/assignable`);
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch users');
+    }
+  };
 
   const fetchTaskData = async () => {
     try {
@@ -69,6 +80,16 @@ const TaskDetail = () => {
       fetchTaskData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to reassign task');
+    }
+  };
+
+  const handleOwnedByChange = async (newOwnedBy) => {
+    try {
+      await axios.patch(`${API}/tasks/${taskId}`, { owned_by: newOwnedBy });
+      toast.success('Task owner updated');
+      setTask({ ...task, owned_by: newOwnedBy, owned_by_name: users.find(u => u.id === newOwnedBy)?.full_name });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update task owner');
     }
   };
 
@@ -257,10 +278,26 @@ const TaskDetail = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">Owned By</label>
-                  <div className="flex items-center gap-2">
-                    <User size={16} className="text-text-secondary" />
-                    <span className="text-text-primary">{task.owned_by_name || 'Unassigned'}</span>
-                  </div>
+                  {(user?.role === 'admin' || user?.role === 'owner' || task?.created_by === user?.id) ? (
+                    <select
+                      value={task.owned_by || ''}
+                      onChange={(e) => handleOwnedByChange(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      data-testid="owned-by-select"
+                    >
+                      <option value="">Unassigned</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <User size={16} className="text-text-secondary" />
+                      <span className="text-text-primary">{task.owned_by_name || 'Unassigned'}</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">Created By</label>
