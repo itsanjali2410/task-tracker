@@ -581,20 +581,14 @@ async def update_task(
     
     # Authorization checks
     if current_user.role in NON_ADMIN_ROLES:
-        # Allow if user is assigned to task or created the task
-        is_assigned = task["assigned_to"] == current_user.id
-        is_creator = task["created_by"] == current_user.id
-        if not (is_assigned or is_creator):
+        # Only task creators can update tasks
+        if task["created_by"] != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to update this task"
+                detail="Only task creator can update this task"
             )
-        # Non-admin roles can update status and owned_by
-        update_data = {}
-        if task_update.status:
-            update_data["status"] = task_update.status
-        if task_update.owned_by is not None:
-            update_data["owned_by"] = task_update.owned_by
+        # Task creators can update all fields
+        update_data = task_update.model_dump(exclude_unset=True)
     else:
         # Admins and Owners can update all fields
         update_data = task_update.model_dump(exclude_unset=True)

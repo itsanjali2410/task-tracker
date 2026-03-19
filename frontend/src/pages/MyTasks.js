@@ -3,22 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Calendar, User } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const MyTasks = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    if (user?.id) {
+      fetchTasks();
+    }
+  }, [user?.id]);
 
   const fetchTasks = async () => {
     try {
-      const response = await axios.get(`${API}/tasks`);
+      const response = await axios.get(`${API}/tasks?owned_by=${user?.id}`);
       setTasks(response.data);
     } catch (error) {
       toast.error('Failed to fetch tasks');
@@ -58,14 +62,14 @@ const MyTasks = () => {
       {/* Header */}
       <div>
         <h2 className="text-3xl font-heading font-bold text-text-primary mb-2">My Tasks</h2>
-        <p className="text-text-secondary">View and update your assigned tasks</p>
+        <p className="text-text-secondary">View and manage tasks owned by you</p>
       </div>
 
       {/* Tasks Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {tasks.length === 0 ? (
           <div className="col-span-full text-center py-12">
-            <p className="text-text-secondary">No tasks assigned to you yet</p>
+            <p className="text-text-secondary">No tasks owned by you yet</p>
           </div>
         ) : (
           tasks.map((task) => (

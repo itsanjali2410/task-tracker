@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, User, MessageSquare, Send, Paperclip, Upload, Download, Trash2, RefreshCw, X } from 'lucide-react';
+import { ArrowLeft, Calendar, User, MessageSquare, Send, Paperclip, Upload, Download, Trash2, RefreshCw, X, History } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -25,6 +25,10 @@ const TaskDetail = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [quotedText, setQuotedText] = useState('');
   const [users, setUsers] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+  const [commentAttachments, setCommentAttachments] = useState([]);
+  const [uploadingCommentFile, setUploadingCommentFile] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -42,10 +46,11 @@ const TaskDetail = () => {
 
   const fetchTaskData = async () => {
     try {
-      const [taskRes, commentsRes, attachmentsRes] = await Promise.all([
+      const [taskRes, commentsRes, attachmentsRes, auditRes] = await Promise.all([
         axios.get(`${API}/tasks/${taskId}`),
         axios.get(`${API}/comments/task/${taskId}`),
-        axios.get(`${API}/attachments/task/${taskId}`)
+        axios.get(`${API}/attachments/task/${taskId}`),
+        fetchAuditLogs()
       ]);
       setTask(taskRes.data);
       setComments(commentsRes.data);
@@ -55,6 +60,20 @@ const TaskDetail = () => {
       navigate(-1);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAuditLogs = async () => {
+    try {
+      setLoadingAudit(true);
+      const response = await axios.get(`${API}/audit-logs/task/${taskId}`);
+      setAuditLogs(response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch audit logs');
+      return [];
+    } finally {
+      setLoadingAudit(false);
     }
   };
 
@@ -112,6 +131,7 @@ const TaskDetail = () => {
       setNewComment('');
       setReplyingTo(null);
       setQuotedText('');
+      setCommentAttachments([]);
       toast.success('Comment added');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to add comment');
@@ -156,6 +176,46 @@ const TaskDetail = () => {
       toast.error(error.response?.data?.detail || 'Failed to upload file');
     } finally {
       setUploadingFile(false);
+    }
+  };
+
+  const handleCommentFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+    const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedTypes.includes(fileExt)) {
+      toast.error(`File type not allowed. Allowed types: ${allowedTypes.join(', ')}`);
+      return;
+    }
+
+    setUploadingCommentFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await axios.post(`${API}/attachments?task_id=${taskId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Add to comment attachments
+      setCommentAttachments([...commentAttachments, response.data]);
+      toast.success('File attached to comment');
+      e.target.value = ''; // Reset input
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to attach file');
+    } finally {
+      setUploadingCommentFile(false);
     }
   };
 
@@ -226,7 +286,8 @@ const TaskDetail = () => {
 
   if (!task) return null;
 
-  const canUpdateStatus = user?.role === 'admin' || user?.role === 'owner' || task?.assigned_to === user?.id;
+  const canEditTask = user?.role === 'admin' || user?.role === 'owner' || task?.created_by === user?.id;
+  const canUpdateStatus = canEditTask;
   const canReassign = user?.role === 'admin' || user?.role === 'owner';
 
   return (
@@ -278,7 +339,7 @@ const TaskDetail = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">Owned By</label>
-                  {(user?.role === 'admin' || user?.role === 'owner' || task?.created_by === user?.id) ? (
+                  {canEditTask ? (
                     <select
                       value={task.owned_by || ''}
                       onChange={(e) => handleOwnedByChange(e.target.value)}
@@ -348,7 +409,7 @@ const TaskDetail = () => {
             </div>
           </div>
 
-          {/* Comments Button and Attachments */}
+          {/* Comments Button and History */}
           <div className="flex gap-4">
             <button
               onClick={() => setShowCommentsModal(true)}
@@ -357,6 +418,14 @@ const TaskDetail = () => {
             >
               <MessageSquare size={20} />
               Comments ({comments.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className="flex-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg shadow-sm p-4 font-medium flex items-center justify-center gap-2 transition-colors"
+              data-testid="history-btn"
+            >
+              <History size={20} />
+              Task History
             </button>
           </div>
 
@@ -589,27 +658,70 @@ const TaskDetail = () => {
                   </button>
                 </div>
               )}
-              <form onSubmit={handleAddComment} className="flex gap-2">
-                <textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder={replyingTo ? `Reply to ${replyingTo.user_name}...` : 'Add a comment...'}
-                  rows={3}
-                  className="flex-1 px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                  disabled={submittingComment}
-                  data-testid="comment-input"
-                />
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="submit"
-                    disabled={submittingComment || !newComment.trim()}
-                    className="px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                    data-testid="submit-comment-btn"
-                  >
-                    <Send size={18} />
-                    {replyingTo ? 'Send Reply' : 'Post'}
-                  </button>
+              <form onSubmit={handleAddComment} className="space-y-3">
+                <div className="flex gap-2">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder={replyingTo ? `Reply to ${replyingTo.user_name}...` : 'Add a comment...'}
+                    rows={3}
+                    className="flex-1 px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    disabled={submittingComment}
+                    data-testid="comment-input"
+                  />
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="submit"
+                      disabled={submittingComment || !newComment.trim()}
+                      className="px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      data-testid="submit-comment-btn"
+                    >
+                      <Send size={18} />
+                      {replyingTo ? 'Send Reply' : 'Post'}
+                    </button>
+                  </div>
                 </div>
+
+                {/* Comment File Attachments */}
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-medium cursor-pointer transition-colors text-sm">
+                    <Paperclip size={16} />
+                    {uploadingCommentFile ? 'Attaching...' : 'Attach File'}
+                    <input
+                      type="file"
+                      onChange={handleCommentFileUpload}
+                      disabled={uploadingCommentFile}
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      data-testid="comment-file-upload"
+                    />
+                  </label>
+                  <span className="text-xs text-text-secondary">
+                    {commentAttachments.length > 0 && `${commentAttachments.length} file(s) attached`}
+                  </span>
+                </div>
+
+                {/* Attached Files Preview */}
+                {commentAttachments.length > 0 && (
+                  <div className="space-y-2">
+                    {commentAttachments.map((file) => (
+                      <div key={file.id} className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Paperclip size={14} className="text-blue-600 flex-shrink-0" />
+                          <span className="text-blue-700 truncate">{file.file_name}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCommentAttachments(commentAttachments.filter(f => f.id !== file.id))}
+                          className="text-blue-600 hover:text-blue-800 ml-2 flex-shrink-0"
+                          title="Remove attachment"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </form>
             </div>
           </div>
@@ -640,6 +752,73 @@ const TaskDetail = () => {
                 <RefreshCw size={16} />
                 Yes, Reassign
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task History Modal */}
+      {activeTab === 'history' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-gradient-to-r from-purple-50 to-transparent">
+              <div>
+                <h3 className="text-xl font-heading font-semibold text-text-primary flex items-center gap-2">
+                  <History size={24} />
+                  Task History ({auditLogs.length})
+                </h3>
+                <p className="text-sm text-text-secondary mt-1">{task?.title}</p>
+              </div>
+              <button
+                onClick={() => setActiveTab('comments')}
+                className="text-text-secondary hover:text-text-primary transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* History Timeline */}
+            <div className="flex-1 overflow-y-auto bg-slate-50">
+              <div className="p-6 space-y-4">
+                {loadingAudit ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : auditLogs.length === 0 ? (
+                  <p className="text-center text-text-secondary py-12">No changes recorded yet</p>
+                ) : (
+                  auditLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 hover:shadow-md transition-all"
+                      data-testid={`audit-log-${log.id}`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-semibold text-text-primary">{log.user_name}</p>
+                          <p className="text-xs text-text-secondary">
+                            {new Date(log.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                          {log.action_type.replace('_', ' ')}
+                        </span>
+                      </div>
+                      {log.metadata && (
+                        <div className="text-sm text-text-secondary mt-3 bg-slate-50 p-3 rounded border border-slate-200">
+                          {Object.entries(log.metadata).map(([key, value]) => (
+                            <div key={key} className="flex justify-between py-1">
+                              <span className="font-medium">{key.replace(/_/g, ' ')}:</span>
+                              <span className="text-right">{String(value)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
