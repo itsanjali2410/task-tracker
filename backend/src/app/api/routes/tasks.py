@@ -581,13 +581,20 @@ async def update_task(
     
     # Authorization checks
     if current_user.role in NON_ADMIN_ROLES:
-        if task["assigned_to"] != current_user.id:
+        # Allow if user is assigned to task or created the task
+        is_assigned = task["assigned_to"] == current_user.id
+        is_creator = task["created_by"] == current_user.id
+        if not (is_assigned or is_creator):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this task"
             )
-        # Non-admin roles can only update status
-        update_data = {"status": task_update.status} if task_update.status else {}
+        # Non-admin roles can update status and owned_by
+        update_data = {}
+        if task_update.status:
+            update_data["status"] = task_update.status
+        if task_update.owned_by is not None:
+            update_data["owned_by"] = task_update.owned_by
     else:
         # Admins and Owners can update all fields
         update_data = task_update.model_dump(exclude_unset=True)
@@ -635,41 +642,61 @@ async def update_task(
 
         # If owned_by is being updated, fetch new owner details
         if "owned_by" in update_data and update_data["owned_by"] != task.get("owned_by"):
-            owner_user = await db.users.find_one({"id": update_data["owned_by"]}, {"_id": 0})
-            if not owner_user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Task owner not found"
+            if update_data["owned_by"]:  # Only validate if not clearing the owner
+                owner_user = await db.users.find_one({"id": update_data["owned_by"]}, {"_id": 0})
+                if not owner_user:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Task owner not found"
+                    )
+
+                old_owner = task.get("owned_by_name", "Unassigned")
+                new_owner = owner_user["full_name"]
+
+                update_data["owned_by_email"] = owner_user["email"]
+                update_data["owned_by_name"] = new_owner
+
+                # Log task owner change audit
+                await log_audit(
+                    action_type="task_owner_changed",
+                    user_id=current_user.id,
+                    user_name=current_user.full_name,
+                    user_email=current_user.email,
+                    task_id=task_id,
+                    metadata={
+                        "task_title": task["title"],
+                        "old_owner": old_owner,
+                        "new_owner": new_owner,
+                        "new_owner_email": owner_user["email"]
+                    }
                 )
 
-            old_owner = task.get("owned_by_name", "Unassigned")
-            new_owner = owner_user["full_name"]
+                # Create notification for new owner
+                await create_notification(
+                    user_id=update_data["owned_by"],
+                    notification_type="task_owner_assigned",
+                    message=f"You are now the owner of task '{task['title']}'",
+                    related_task_id=task_id
+                )
+            else:
+                # Clearing the owner
+                old_owner = task.get("owned_by_name", "Unassigned")
+                update_data["owned_by_email"] = ""
+                update_data["owned_by_name"] = "Unassigned"
 
-            update_data["owned_by_email"] = owner_user["email"]
-            update_data["owned_by_name"] = new_owner
-
-            # Log task owner change audit
-            await log_audit(
-                action_type="task_owner_changed",
-                user_id=current_user.id,
-                user_name=current_user.full_name,
-                user_email=current_user.email,
-                task_id=task_id,
-                metadata={
-                    "task_title": task["title"],
-                    "old_owner": old_owner,
-                    "new_owner": new_owner,
-                    "new_owner_email": owner_user["email"]
-                }
-            )
-
-            # Create notification for new owner
-            await create_notification(
-                user_id=update_data["owned_by"],
-                notification_type="task_owner_assigned",
-                message=f"You are now the owner of task '{task['title']}'",
-                related_task_id=task_id
-            )
+                # Log task owner cleared audit
+                await log_audit(
+                    action_type="task_owner_changed",
+                    user_id=current_user.id,
+                    user_name=current_user.full_name,
+                    user_email=current_user.email,
+                    task_id=task_id,
+                    metadata={
+                        "task_title": task["title"],
+                        "old_owner": old_owner,
+                        "new_owner": "Unassigned"
+                    }
+                )
     
     if not update_data:
         raise HTTPException(
