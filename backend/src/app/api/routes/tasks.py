@@ -75,7 +75,8 @@ async def create_task(
         owned_by_name=owner_user["full_name"],
         created_by=current_user.id,
         created_by_name=current_user.full_name,
-        due_date=task_data.due_date
+        due_date=task_data.due_date,
+        assigned_date=datetime.now(timezone.utc).strftime("%Y-%m-%d")
     )
     
     # Convert to dict and serialize datetime
@@ -580,18 +581,19 @@ async def update_task(
         )
     
     # Authorization checks
+    update_data = task_update.model_dump(exclude_unset=True)
+
     if current_user.role in NON_ADMIN_ROLES:
-        # Only task creators can update tasks
+        # Non-admins can only update specific fields (status, due_date, owned_by)
+        # unless they are the task creator
         if task["created_by"] != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only task creator can update this task"
-            )
-        # Task creators can update all fields
-        update_data = task_update.model_dump(exclude_unset=True)
-    else:
-        # Admins and Owners can update all fields
-        update_data = task_update.model_dump(exclude_unset=True)
+            allowed_fields = {"status", "due_date", "owned_by"}
+            restricted_fields = set(update_data.keys()) - allowed_fields
+            if restricted_fields:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"You can only update status, due_date, and owned_by. Cannot update: {', '.join(restricted_fields)}"
+                )
         
         # If assigned_to is being updated, reassign back to creator
         if "assigned_to" in update_data and update_data["assigned_to"] != task.get("assigned_to"):

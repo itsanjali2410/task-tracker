@@ -190,7 +190,14 @@ async def update_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
+    # Prevent modifying system users
+    if user.get("is_system_user", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System users cannot be modified"
+        )
+
     update_data = user_update.model_dump(exclude_unset=True)
     
     if not update_data:
@@ -267,7 +274,14 @@ async def reset_user_password(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
+    # Prevent resetting password for system users
+    if user.get("is_system_user", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot reset password for system users"
+        )
+
     # Hash new password
     hashed_password = get_password_hash(password_data.new_password)
     
@@ -319,12 +333,19 @@ async def deactivate_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot deactivate your own account"
         )
-    
+
     user = await db.users.find_one({"id": user_id})
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
+        )
+
+    # Prevent deactivating system users
+    if user.get("is_system_user", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System users cannot be deactivated"
         )
     
     await db.users.update_one(

@@ -14,6 +14,7 @@ const UserManagement = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -82,6 +83,7 @@ const UserManagement = () => {
       setShowPasswordModal(false);
       setSelectedUser(null);
       setPasswordData({ new_password: '' });
+      setShowPasswordReset(false);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to reset password');
     }
@@ -197,30 +199,47 @@ const UserManagement = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    {user.is_active ? (
-                      <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 border-green-200">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 border-red-200">
-                        Inactive
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {user.is_active ? (
+                        <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 border-green-200">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 border-red-200">
+                          Inactive
+                        </span>
+                      )}
+                      {user.is_system_user && (
+                        <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200" title="System user - cannot be modified or deleted">
+                          🔒 System
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => openEditModal(user)}
-                        className="p-2 hover:bg-blue-50 rounded-md transition-colors"
-                        title="Edit User"
+                        disabled={user.is_system_user}
+                        className={`p-2 rounded-md transition-colors ${
+                          user.is_system_user
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'hover:bg-blue-50'
+                        }`}
+                        title={user.is_system_user ? 'System users cannot be edited' : 'Edit User'}
                         data-testid={`edit-btn-${user.id}`}
                       >
                         <Edit2 size={16} className="text-blue-600" />
                       </button>
                       <button
                         onClick={() => openPasswordModal(user)}
-                        className="p-2 hover:bg-yellow-50 rounded-md transition-colors"
-                        title="Reset Password"
+                        disabled={user.is_system_user}
+                        className={`p-2 rounded-md transition-colors ${
+                          user.is_system_user
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'hover:bg-yellow-50'
+                        }`}
+                        title={user.is_system_user ? 'System users cannot have password reset' : 'Reset Password'}
                         data-testid={`password-btn-${user.id}`}
                       >
                         <Key size={16} className="text-yellow-600" />
@@ -228,8 +247,13 @@ const UserManagement = () => {
                       {user.is_active ? (
                         <button
                           onClick={() => handleDeactivate(user)}
-                          className="p-2 hover:bg-red-50 rounded-md transition-colors"
-                          title="Deactivate User"
+                          disabled={user.is_system_user}
+                          className={`p-2 rounded-md transition-colors ${
+                            user.is_system_user
+                              ? 'opacity-50 cursor-not-allowed'
+                              : 'hover:bg-red-50'
+                          }`}
+                          title={user.is_system_user ? 'System users cannot be deactivated' : 'Deactivate User'}
                           data-testid={`deactivate-btn-${user.id}`}
                         >
                           <UserX size={16} className="text-red-600" />
@@ -237,8 +261,13 @@ const UserManagement = () => {
                       ) : (
                         <button
                           onClick={() => handleActivate(user)}
-                          className="p-2 hover:bg-green-50 rounded-md transition-colors"
-                          title="Activate User"
+                          disabled={user.is_system_user}
+                          className={`p-2 rounded-md transition-colors ${
+                            user.is_system_user
+                              ? 'opacity-50 cursor-not-allowed'
+                              : 'hover:bg-green-50'
+                          }`}
+                          title={user.is_system_user ? 'System users cannot be deactivated' : 'Activate User'}
                           data-testid={`activate-btn-${user.id}`}
                         >
                           <UserCheck size={16} className="text-green-600" />
@@ -318,7 +347,7 @@ const UserManagement = () => {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => { setShowModal(false); setShowPassword(false); }}
                   className="flex-1 px-4 py-2 border border-slate-200 text-text-primary rounded-md hover:bg-slate-50 transition-colors"
                   data-testid="cancel-btn"
                 >
@@ -404,20 +433,32 @@ const UserManagement = () => {
             <form onSubmit={handlePasswordReset} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-2">New Password</label>
-                <input
-                  type="password"
-                  value={passwordData.new_password}
-                  onChange={(e) => setPasswordData({ new_password: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  required
-                  minLength="6"
-                  placeholder="Enter new password"
-                />
+                <div className="relative">
+                  <input
+                    type={showPasswordReset ? "text" : "password"}
+                    value={passwordData.new_password}
+                    onChange={(e) => setPasswordData({ new_password: e.target.value })}
+                    className="w-full px-4 py-2 pr-12 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    required
+                    minLength="6"
+                    placeholder="Enter new password"
+                    data-testid="reset-password-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordReset(!showPasswordReset)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
+                    title={showPasswordReset ? 'Hide password' : 'Show password'}
+                    data-testid="reset-password-toggle"
+                  >
+                    {showPasswordReset ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => { setShowPasswordModal(false); setSelectedUser(null); }}
+                  onClick={() => { setShowPasswordModal(false); setSelectedUser(null); setShowPasswordReset(false); }}
                   className="flex-1 px-4 py-2 border border-slate-200 text-text-primary rounded-md hover:bg-slate-50 transition-colors"
                 >
                   Cancel

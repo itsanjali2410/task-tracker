@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -7,6 +8,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -59,16 +61,27 @@ const Login = () => {
               <label htmlFor="password" className="block text-sm font-medium text-text-primary mb-2">
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                placeholder="••••••••"
-                required
-                data-testid="password-input"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                  required
+                  data-testid="password-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  data-testid="toggle-password-btn"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -81,15 +94,8 @@ const Login = () => {
             </button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-8 p-4 bg-slate-50 rounded-lg">
-            <p className="text-xs font-semibold text-text-secondary mb-2">Demo Credentials:</p>
-            <div className="space-y-1 text-xs text-text-secondary">
-              <p><strong>Admin:</strong> admin@tripstars.com / Admin@123</p>
-              <p><strong>Manager:</strong> manager@tripstars.com / Manager@123</p>
-              <p><strong>Member:</strong> member@tripstars.com / Member@123</p>
-            </div>
-          </div>
+          
+          
         </div>
       </div>
     </div>

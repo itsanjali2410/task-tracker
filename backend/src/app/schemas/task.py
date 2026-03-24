@@ -37,6 +37,7 @@ class TaskResponse(BaseModel):
     created_by: str
     created_by_name: Optional[str] = None
     due_date: str
+    assigned_date: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

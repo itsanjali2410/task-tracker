@@ -18,5 +18,6 @@ class TaskInDB(BaseModel):
     created_by: str  # User ID
     created_by_name: Optional[str] = None
     due_date: str
+    assigned_date: Optional[str] = None  # Date when task was assigned
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

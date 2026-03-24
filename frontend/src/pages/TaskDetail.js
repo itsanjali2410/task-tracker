@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, User, MessageSquare, Send, Paperclip, Upload, Download, Trash2, RefreshCw, X, History } from 'lucide-react';
+import { ArrowLeft, Calendar, User, MessageSquare, Send, Paperclip, Upload, Download, Trash2, RefreshCw, X, History, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -29,6 +29,7 @@ const TaskDetail = () => {
   const [loadingAudit, setLoadingAudit] = useState(false);
   const [commentAttachments, setCommentAttachments] = useState([]);
   const [uploadingCommentFile, setUploadingCommentFile] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -112,15 +113,31 @@ const TaskDetail = () => {
     }
   };
 
+  const handleDueDateChange = async (newDate) => {
+    try {
+      await axios.patch(`${API}/tasks/${taskId}`, { due_date: newDate });
+      toast.success('Due date updated');
+      setTask({ ...task, due_date: newDate });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update due date');
+    }
+  };
+
   const handleAddComment = async (e) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!newComment.trim() && commentAttachments.length === 0) return;
 
     setSubmittingComment(true);
     try {
       let content = newComment;
       if (replyingTo) {
         content = `> **Re: ${replyingTo.user_name}**\n> ${replyingTo.content}\n\n${newComment}`;
+      }
+
+      // Append attachment references to comment content if there are attachments
+      if (commentAttachments.length > 0) {
+        const attachmentRefs = commentAttachments.map(att => `📎 ${att.file_name}`).join('\n');
+        content += `\n\n${attachmentRefs}`;
       }
 
       const response = await axios.post(`${API}/comments`, {
@@ -304,9 +321,9 @@ const TaskDetail = () => {
         <h2 className="text-3xl font-heading font-bold text-text-primary">Task Details</h2>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`grid grid-cols-1 gap-6 ${sidebarCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-3'}`}>
         {/* Task Details */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={`space-y-6 ${sidebarCollapsed ? 'lg:col-span-1' : 'lg:col-span-2'}`}>
           {/* Main Info Card */}
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6">
             <div className="flex items-start justify-between mb-4">
@@ -339,26 +356,19 @@ const TaskDetail = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">Owned By</label>
-                  {canEditTask ? (
-                    <select
-                      value={task.owned_by || ''}
-                      onChange={(e) => handleOwnedByChange(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      data-testid="owned-by-select"
-                    >
-                      <option value="">Unassigned</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <User size={16} className="text-text-secondary" />
-                      <span className="text-text-primary">{task.owned_by_name || 'Unassigned'}</span>
-                    </div>
-                  )}
+                  <select
+                    value={task.owned_by || ''}
+                    onChange={(e) => handleOwnedByChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="owned-by-select"
+                  >
+                    <option value="">Unassigned</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.full_name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">Created By</label>
@@ -371,27 +381,36 @@ const TaskDetail = () => {
 
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">Due Date</label>
+                <input
+                  type="date"
+                  value={task.due_date}
+                  onChange={(e) => handleDueDateChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="due-date-input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Assigned Date</label>
                 <div className="flex items-center gap-2">
                   <Calendar size={16} className="text-text-secondary" />
-                  <span className="text-text-primary">{new Date(task.due_date).toLocaleDateString()}</span>
+                  <span className="text-text-primary">{task.assigned_date ? new Date(task.assigned_date).toLocaleDateString() : new Date(task.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
 
-              {canUpdateStatus && (
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">Update Status</label>
-                  <select
-                    value={task.status}
-                    onChange={(e) => handleStatusChange(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    data-testid="status-select"
-                  >
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Status</label>
+                <select
+                  value={task.status}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  data-testid="status-select"
+                >
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
 
               {canReassign && (
                 <div>
@@ -518,26 +537,119 @@ const TaskDetail = () => {
           </div>
         </div>
 
-        {/* Sidebar Info */}
-        <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4">
-            <h5 className="font-heading font-semibold text-text-primary mb-3">Task Information</h5>
-            <div className="space-y-3 text-sm">
-              <div>
-                <span className="text-text-secondary">Created:</span>
-                <p className="text-text-primary font-medium">{new Date(task.created_at).toLocaleString()}</p>
+        {/* Sidebar Info - Collapsible */}
+        {!sidebarCollapsed && (
+          <div>
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4">
+              {/* Sidebar Header with Toggle */}
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="font-heading font-semibold text-text-primary">Task Information</h5>
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="p-1 hover:bg-slate-100 rounded-md transition-colors"
+                  title="Collapse sidebar"
+                  data-testid="sidebar-toggle"
+                >
+                  <ChevronRight size={20} className="text-text-primary" />
+                </button>
               </div>
-              <div>
-                <span className="text-text-secondary">Last Updated:</span>
-                <p className="text-text-primary font-medium">{new Date(task.updated_at).toLocaleString()}</p>
-              </div>
-              <div>
-                <span className="text-text-secondary">Task ID:</span>
-                <p className="text-text-primary font-mono text-xs">{task.id}</p>
+
+            {/* Sidebar Content */}
+              <div className="space-y-3 text-sm">
+                <div>
+                  <span className="text-text-secondary">Assigned To:</span>
+                  <p className="text-text-primary font-medium">{task.assigned_to_name}</p>
+                </div>
+                <div>
+                  <span className="text-text-secondary">Assigned Date:</span>
+                  <p className="text-text-primary font-medium">
+                    {task.assigned_date ? new Date(task.assigned_date).toLocaleDateString() : new Date(task.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-text-secondary">Due Date:</span>
+                  <p className="text-text-primary font-medium">{new Date(task.due_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <span className="text-text-secondary">Priority:</span>
+                  <p className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold border ${getPriorityBadge(task.priority)}`}>
+                    {task.priority}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-text-secondary">Created By:</span>
+                  <p className="text-text-primary font-medium">{task.created_by_name}</p>
+                </div>
+                <div className="border-t border-slate-200 pt-3">
+                  <span className="text-text-secondary">Created:</span>
+                  <p className="text-text-primary font-medium text-xs">{new Date(task.created_at).toLocaleString()}</p>
+                </div>
+                <div>
+                  <span className="text-text-secondary">Last Updated:</span>
+                  <p className="text-text-primary font-medium text-xs">{new Date(task.updated_at).toLocaleString()}</p>
+                </div>
+                <div>
+                  <span className="text-text-secondary">Task ID:</span>
+                  <p className="text-text-primary font-mono text-xs">{task.id}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Collapsed Sidebar - Icon Bar */}
+        {sidebarCollapsed && (
+          <div className="lg:col-span-1">
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-3 h-fit sticky top-6">
+              {/* Expand Button */}
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="p-2 hover:bg-slate-100 rounded transition-colors w-full mb-3 flex justify-center"
+                title="Expand sidebar"
+              >
+                <ChevronLeft size={20} className="text-text-primary" />
+              </button>
+
+              {/* Icon Buttons with Hover Tooltips */}
+              <div className="space-y-2 border-t border-slate-200 pt-3">
+                <div className="group relative">
+                  <button className="p-2 hover:bg-slate-100 rounded transition-colors w-full flex justify-center" title="Assigned To">
+                    <User size={18} className="text-primary" />
+                  </button>
+                  <div className="absolute left-full ml-2 hidden group-hover:block bg-slate-900 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10">
+                    {task.assigned_to_name}
+                  </div>
+                </div>
+                <div className="group relative">
+                  <button className="p-2 hover:bg-slate-100 rounded transition-colors w-full flex justify-center" title="Assigned Date">
+                    <Calendar size={18} className="text-primary" />
+                  </button>
+                  <div className="absolute left-full ml-2 hidden group-hover:block bg-slate-900 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10">
+                    {task.assigned_date ? new Date(task.assigned_date).toLocaleDateString() : new Date(task.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="group relative">
+                  <button className="p-2 hover:bg-slate-100 rounded transition-colors w-full flex justify-center" title="Priority">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold border ${getPriorityBadge(task.priority)}`}>
+                      {task.priority.charAt(0).toUpperCase()}
+                    </span>
+                  </button>
+                  <div className="absolute left-full ml-2 hidden group-hover:block bg-slate-900 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10">
+                    {task.priority}
+                  </div>
+                </div>
+                <div className="group relative">
+                  <button className="p-2 hover:bg-slate-100 rounded transition-colors w-full flex justify-center" title="Created By">
+                    <Info size={18} className="text-primary" />
+                  </button>
+                  <div className="absolute left-full ml-2 hidden group-hover:block bg-slate-900 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10">
+                    {task.created_by_name}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Comments Modal - Email Style */}

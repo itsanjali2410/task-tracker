@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.core.security import verify_password, create_access_token, create_refresh_token
 from app.db.mongodb import get_database
@@ -8,6 +8,9 @@ from app.models.refresh_token import RefreshTokenInDB
 from datetime import datetime, timezone, timedelta
 from app.core.config import settings
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -41,7 +44,7 @@ async def login(login_data: LoginRequest):
     
     # Create refresh token
     refresh_token = create_refresh_token()
-    
+
     # Store refresh token in database
     refresh_token_doc = RefreshTokenInDB(
         id=str(uuid.uuid4()),
@@ -49,12 +52,13 @@ async def login(login_data: LoginRequest):
         token=refresh_token,
         expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     )
-    
+
     refresh_dict = refresh_token_doc.model_dump()
     refresh_dict["created_at"] = refresh_dict["created_at"].isoformat()
     refresh_dict["expires_at"] = refresh_dict["expires_at"].isoformat()
-    
+
     await db.refresh_tokens.insert_one(refresh_dict)
+    logger.info(f"✓ Refresh token created for user: {user['email']}")
     
     # Remove sensitive fields
     user.pop("_id", None)
@@ -86,11 +90,12 @@ async def login(login_data: LoginRequest):
     )
 
 @router.post("/refresh")
-async def refresh_access_token(refresh_token: str):
+async def refresh_access_token(refresh_token: str = Query(..., description="Refresh token")):
     """
     Refresh token endpoint
     - Validates refresh token
     - Issues new access token
+    - Does NOT create a new refresh token
     """
     db = get_database()
     

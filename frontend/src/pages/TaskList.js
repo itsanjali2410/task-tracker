@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, Calendar, User, Search, Filter, X, ChevronDown, AlertTriangle, LayoutGrid, List, Trash2, XCircle, Edit3, CheckSquare, Square } from 'lucide-react';
+import { Plus, Calendar, User, Search, Filter, X, ChevronDown, AlertTriangle, LayoutGrid, List, Trash2, XCircle, Edit3, CheckSquare, Square, Upload, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import KanbanBoard from '../components/KanbanBoard';
@@ -38,6 +38,10 @@ const TaskList = () => {
     owned_by: '',
     due_date: ''
   });
+
+  // Staged files for task creation
+  const [stagedFiles, setStagedFiles] = useState([]);
+  const [uploadingTaskFiles, setUploadingTaskFiles] = useState(false);
 
   // Search and filter state
   const [filters, setFilters] = useState({
@@ -126,15 +130,65 @@ const TaskList = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API}/tasks`, formData);
+      const response = await axios.post(`${API}/tasks`, formData);
+      const newTaskId = response.data.id;
+
+      // Upload staged files if any
+      if (stagedFiles.length > 0) {
+        setUploadingTaskFiles(true);
+        for (const file of stagedFiles) {
+          try {
+            const formDataWithFile = new FormData();
+            formDataWithFile.append('file', file);
+            await axios.post(`${API}/attachments?task_id=${newTaskId}`, formDataWithFile, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            });
+          } catch (fileError) {
+            console.error(`Failed to upload ${file.name}:`, fileError);
+            toast.error(`Failed to upload ${file.name}`);
+          }
+        }
+        setUploadingTaskFiles(false);
+      }
+
       toast.success('Task created successfully');
       setShowModal(false);
       setFormData({ title: '', description: '', priority: 'medium', assigned_to: '', owned_by: '', due_date: '' });
+      setStagedFiles([]);
       fetchTasks();
       fetchStats();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to create task');
+      setUploadingTaskFiles(false);
     }
+  };
+
+  const handleStagedFileAdd = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+    const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedTypes.includes(fileExt)) {
+      toast.error(`File type not allowed. Allowed types: ${allowedTypes.join(', ')}`);
+      return;
+    }
+
+    setStagedFiles([...stagedFiles, file]);
+    e.target.value = ''; // Reset input
+  };
+
+  const handleStagedFileRemove = (index) => {
+    setStagedFiles(stagedFiles.filter((_, i) => i !== index));
   };
 
   const handleStatusChange = async (taskId, newStatus) => {
@@ -773,10 +827,59 @@ const TaskList = () => {
                   data-testid="task-due-date-input"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">Attachments (Optional)</label>
+                <div className="mb-3">
+                  <label
+                    htmlFor="task-file-input"
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 text-text-primary rounded-md cursor-pointer hover:bg-slate-100 transition-colors"
+                  >
+                    <Upload size={18} />
+                    {uploadingTaskFiles ? 'Uploading...' : 'Add File'}
+                  </label>
+                  <input
+                    id="task-file-input"
+                    type="file"
+                    onChange={handleStagedFileAdd}
+                    disabled={uploadingTaskFiles}
+                    className="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    data-testid="task-file-input"
+                  />
+                  <p className="text-xs text-text-secondary mt-1">
+                    Supported: PDF, JPG, PNG, DOC, DOCX (Max 10MB)
+                  </p>
+                </div>
+                {stagedFiles.length > 0 && (
+                  <div className="space-y-2">
+                    {stagedFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded"
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Paperclip size={16} className="text-text-secondary flex-shrink-0" />
+                          <span className="text-sm text-text-primary truncate">{file.name}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleStagedFileRemove(index)}
+                          className="p-1 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                        >
+                          <X size={16} className="text-red-600" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setStagedFiles([]);
+                  }}
                   className="flex-1 px-4 py-2 border border-slate-200 text-text-primary rounded-md hover:bg-slate-50 transition-colors"
                   data-testid="cancel-task-btn"
                 >
@@ -784,10 +887,11 @@ const TaskList = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-md transition-all active:scale-95"
+                  disabled={uploadingTaskFiles}
+                  className="flex-1 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-md transition-all active:scale-95 disabled:opacity-50"
                   data-testid="submit-task-btn"
                 >
-                  Create Task
+                  {uploadingTaskFiles ? 'Creating...' : 'Create Task'}
                 </button>
               </div>
             </form>
